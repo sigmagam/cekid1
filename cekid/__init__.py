@@ -8,6 +8,7 @@ from pyrogram.types import BotCommand
 
 from cekid import config
 from cekid.store import Store
+from cekid.tasks import backup_loop
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,6 +26,8 @@ COMMANDS = [
     BotCommand("cek", "Cek ID user (balas pesan / @username / id)"),
     BotCommand("id", "Lihat ID chat ini"),
     BotCommand("help", "Bantuan"),
+    BotCommand("broadcast", "Siaran ke semua user (admin)"),
+    BotCommand("stats", "Jumlah user (admin)"),
 ]
 
 
@@ -41,11 +44,15 @@ class CekIdBot(Client):
     async def start(self, *args, **kwargs) -> "CekIdBot":
         await super().start(*args, **kwargs)
         await self.set_bot_commands(COMMANDS)
+        # Backup database tiap 00:00 WIB.
+        self._bg = [asyncio.create_task(backup_loop(self))]
         me = await self.get_me()
         log.info("✅ Bot aktif sebagai @%s", me.username or me.id)
         return self
 
     async def stop(self, *args, **kwargs):
+        for task in getattr(self, "_bg", []):
+            task.cancel()
         await super().stop(*args, **kwargs)
         log.info("Bot berhenti.")
 

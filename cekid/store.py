@@ -1,4 +1,4 @@
-"""Penyimpanan chat yang pernah dilihat bot (SQLite, bukan JSON)."""
+"""Penyimpanan user yang pernah /start (SQLite, bukan JSON)."""
 
 import sqlite3
 import time
@@ -10,12 +10,12 @@ class Store:
         with self._conn() as conn:
             conn.execute(
                 """
-                CREATE TABLE IF NOT EXISTS chats (
-                    chat_id   INTEGER PRIMARY KEY,
-                    title     TEXT,
-                    type      TEXT,
-                    username  TEXT,
-                    seen_at   INTEGER
+                CREATE TABLE IF NOT EXISTS users (
+                    user_id    INTEGER PRIMARY KEY,
+                    first_name TEXT,
+                    last_name  TEXT,
+                    username   TEXT,
+                    started_at INTEGER
                 )
                 """
             )
@@ -25,35 +25,32 @@ class Store:
         conn.row_factory = sqlite3.Row
         return conn
 
-    def save_chat(self, chat) -> None:
-        if chat is None:
+    def save_user(self, user) -> None:
+        if user is None or getattr(user, "is_bot", False):
             return
         with self._conn() as conn:
             conn.execute(
                 """
-                INSERT INTO chats (chat_id, title, type, username, seen_at)
+                INSERT INTO users (user_id, first_name, last_name, username, started_at)
                 VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(chat_id) DO UPDATE SET
-                    title=excluded.title,
-                    type=excluded.type,
-                    username=excluded.username,
-                    seen_at=excluded.seen_at
+                ON CONFLICT(user_id) DO UPDATE SET
+                    first_name=excluded.first_name,
+                    last_name=excluded.last_name,
+                    username=excluded.username
                 """,
                 (
-                    chat.id,
-                    getattr(chat, "title", None),
-                    str(getattr(chat, "type", "")),
-                    getattr(chat, "username", None),
+                    user.id,
+                    user.first_name,
+                    getattr(user, "last_name", None),
+                    getattr(user, "username", None),
                     int(time.time()),
                 ),
             )
 
-    def chats(self, kinds: list[str], limit: int = 50) -> list[sqlite3.Row]:
-        """Ambil chat berdasarkan tipe: ["ChatType.GROUP", "ChatType.SUPERGROUP"]."""
-        placeholders = ",".join("?" for _ in kinds)
+    def user_ids(self) -> list[int]:
         with self._conn() as conn:
-            return conn.execute(
-                f"SELECT * FROM chats WHERE type IN ({placeholders}) "
-                "ORDER BY seen_at DESC LIMIT ?",
-                (*kinds, limit),
-            ).fetchall()
+            return [r["user_id"] for r in conn.execute("SELECT user_id FROM users")]
+
+    def count(self) -> int:
+        with self._conn() as conn:
+            return conn.execute("SELECT COUNT(*) AS c FROM users").fetchone()["c"]

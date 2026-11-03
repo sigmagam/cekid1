@@ -1,29 +1,17 @@
-"""Lookup user / premium / bot (tombol request → hasil langsung)."""
+"""Lookup user / premium / bot (tombol request → kartu rich langsung)."""
 
 from pyrogram import Client, filters
-from pyrogram.types import LinkPreviewOptions, Message
+from pyrogram.types import Message
 
 from cekid import bot, store
 from cekid.keyboards import REQ_BOT, REQ_PREMIUM
-from cekid.utils import user_card
-
-
-async def send_card(message: Message, user, badge: str | None = None) -> Message:
-    text, photo = await user_card(bot, user)
-    if badge:
-        text = f"{badge}\n\n{text}"
-    if photo:
-        try:
-            return await message.reply_photo(photo, caption=text)
-        except Exception:
-            pass
-    return await message.reply(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
+from cekid.utils import reply_user_card
 
 
 @Client.on_message(filters.users_shared)
 async def on_user_shared(_, message: Message):
     """Dari tombol 👤 User / ⭐️ Premium / 🤖 Bot."""
-    store.save_chat(message.chat)
+    store.save_user(message.from_user)
     shared = message.users_shared
     try:
         user = await bot.get_users(shared.users[0].id)
@@ -34,13 +22,13 @@ async def on_user_shared(_, message: Message):
         return await message.reply(f"⚠️ {user.mention} bukan bot.")
     if shared.button_id == REQ_PREMIUM:
         badge = "⭐️ <b>Premium:</b> Yes" if user.is_premium else "⭐️ <b>Premium:</b> No"
-        return await send_card(message, user, badge)
-    return await send_card(message, user)
+        return await reply_user_card(bot, message, user, badge=badge)
+    return await reply_user_card(bot, message, user)
 
 
 @Client.on_message(filters.command("cek"))
 async def cek_cmd(_, message: Message):
-    store.save_chat(message.chat)
+    store.save_user(message.from_user)
     target = None
     if message.reply_to_message and message.reply_to_message.from_user:
         target = message.reply_to_message.from_user
@@ -58,4 +46,4 @@ async def cek_cmd(_, message: Message):
             "• balas pesan user lalu ketik <code>/cek</code>\n"
             "• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium di menu."
         )
-    return await send_card(message, target)
+    return await reply_user_card(bot, message, target)
