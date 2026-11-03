@@ -4,7 +4,7 @@ from pyrogram import Client, filters
 from pyrogram.types import Message
 
 from cekid import bot, rich, store
-from cekid.keyboards import REQ_BOT, REQ_PREMIUM
+from cekid.keyboards import REQ_BOT, REQ_PREMIUM, REQ_USER
 from cekid.utils import full_name, reply_user_card
 
 CEK_HELP = (
@@ -14,7 +14,6 @@ CEK_HELP = (
     "• balas pesan user lalu ketik <code>/cek</code>\n"
     "• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium di menu."
 )
-
 
 @Client.on_message(filters.users_shared)
 async def on_user_shared(_, message: Message):
@@ -26,13 +25,34 @@ async def on_user_shared(_, message: Message):
     except Exception:
         return await rich.reply(bot, message, fallback="❌ User tidak bisa dibaca.")
 
-    if shared.button_id == REQ_BOT and not user.is_bot:
-        return await rich.reply(bot, message, fallback=f"⚠️ {full_name(user)} bukan bot.")
-    if shared.button_id == REQ_PREMIUM:
-        badge = "⭐️ <b>Premium:</b> Yes" if user.is_premium else "⭐️ <b>Premium:</b> No"
-        return await reply_user_card(bot, message, user, badge=badge)
-    return await reply_user_card(bot, message, user)
+    # Tombol 👤 User = user biasa. Kalau client tetap kasih bot, jangan tampil kartu bot.
+    if shared.button_id in (REQ_USER, REQ_PREMIUM) and user.is_bot:
+        return await rich.reply(
+            bot, message,
+            blocks=[
+                rich.heading("⚠️ Itu bot, bukan user", 3),
+                rich.para(f"{full_name(user)} adalah bot. Pakai tombol 🤖 Bot."),
+            ],
+            fallback=f"⚠️ {full_name(user)} adalah bot. Pakai tombol 🤖 Bot.",
+        )
 
+    if shared.button_id == REQ_BOT and not user.is_bot:
+        return await rich.reply(
+            bot, message,
+            blocks=[
+                rich.heading("⚠️ Itu bukan bot", 3),
+                rich.para(f"{full_name(user)} bukan bot. Pakai tombol 👤 User."),
+            ],
+            fallback=f"⚠️ {full_name(user)} bukan bot. Pakai tombol 👤 User.",
+        )
+
+    badge = None
+    if shared.button_id == REQ_PREMIUM:
+        badge = ("⭐️ <b>User premium</b>" if user.is_premium
+                 else "⭐️ <b>Bukan user premium</b>")
+    elif shared.button_id == REQ_BOT:
+        badge = "🤖 <b>Bot</b>"
+    return await reply_user_card(bot, message, user, badge=badge)
 
 @Client.on_message(filters.command("cek"))
 async def cek_cmd(_, message: Message):
@@ -50,11 +70,14 @@ async def cek_cmd(_, message: Message):
         return await rich.reply(
             bot, message,
             blocks=[
-                rich.heading("🔎 Cara Pakai /cek", 3),
-                rich.para("• <code>/cek 123456789</code>"),
-                rich.para("• <code>/cek @username</code>"),
-                rich.para("• balas pesan user lalu ketik <code>/cek</code>"),
-                rich.para("• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium"),
+                rich.title("🔎 Cara pakai /cek"),
+                rich.divider(),
+                rich.bullets([
+                    "<code>/cek 123456789</code>",
+                    "<code>/cek @username</code>",
+                    "balas pesan user lalu ketik <code>/cek</code>",
+                    "atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium",
+                ]),
             ],
             fallback=CEK_HELP,
         )

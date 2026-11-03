@@ -10,12 +10,21 @@ import random
 
 from pyrogram import enums
 from pyrogram.errors import MessageNotModified
-from pyrogram.types import (DisabledButton, InputRichBlockButtons,
+from pyrogram.types import (CopyTextButton, DisabledButton,
+                            InputRichBlockBlockQuotation,
+                            InputRichBlockButtons, InputRichBlockDetails,
+                            InputRichBlockDivider, InputRichBlockFooter,
+                            InputRichBlockList, InputRichBlockListItem,
+                            InputRichBlockMathematicalExpression,
                             InputRichBlockParagraph,
+                            InputRichBlockPreformatted,
                             InputRichBlockSectionHeading, InputRichBlockTable,
                             InputRichMessage, LinkPreviewOptions,
-                            RichBlockCaption, RichBlockTableCell,
-                            RichMessageButton, RichText, RichTextUrl)
+                            ReplyParameters, RichBlockTableCell,
+                            RichMessageButton, RichText, RichTextBold,
+                            RichTextCode, RichTextCustomEmoji,
+                            RichTextItalic, RichTextMarked, RichTextSubscript,
+                            RichTextSuperscript, RichTextUrl)
 
 logger = logging.getLogger("cekid.rich")
 
@@ -39,10 +48,8 @@ _EFFECTS = os.getenv("EFFECTS", "1").strip().lower() not in ("0", "false", "off"
 _FAILS = 0
 _MAX_FAILS = 3
 
-
 def rich_available() -> bool:
     return _ENABLED and _FAILS < _MAX_FAILS
-
 
 def _note_fail() -> None:
     global _FAILS
@@ -50,23 +57,84 @@ def _note_fail() -> None:
     if _FAILS == _MAX_FAILS:
         logger.warning("Rich message tidak didukung server -> pakai HTML biasa.")
 
-
 def effect_id() -> int | None:
     return random.choice(EFFECTS) if (_EFFECTS and EFFECTS) else None
 
+# ---------- teks bergaya ----------
 
-def heading(text: str, size: int = 3) -> InputRichBlockSectionHeading:
-    return InputRichBlockSectionHeading(text, size)
+def bold(text) -> RichTextBold:
+    return RichTextBold(text)
 
+def italic(text) -> RichTextItalic:
+    return RichTextItalic(text)
 
-def para(text: str) -> InputRichBlockParagraph:
-    return InputRichBlockParagraph(text)
+def code(text) -> RichTextCode:
+    return RichTextCode(str(text))
 
+def mark(text) -> RichTextMarked:
+    return RichTextMarked(text)
 
-def html_link(text: str, url: str) -> RichTextUrl:
-    """Teks yang bisa diklik di dalam blok rich."""
+def sub(text) -> RichTextSubscript:
+    return RichTextSubscript(text)
+
+def sup(text) -> RichTextSuperscript:
+    return RichTextSuperscript(text)
+
+def link(text, url: str) -> RichTextUrl:
+    """Teks yang bisa diklik."""
     return RichTextUrl(text, url)
 
+html_link = link
+
+def emoji(custom_emoji_id: str, alt: str) -> RichTextCustomEmoji:
+    return RichTextCustomEmoji(custom_emoji_id, alt)
+
+# ---------- blok ----------
+
+def heading(text, size: int = 3) -> InputRichBlockSectionHeading:
+    return InputRichBlockSectionHeading(text, size)
+
+def title(text) -> InputRichBlockSectionHeading:
+    return InputRichBlockSectionHeading(text, 1)
+
+def para(text) -> InputRichBlockParagraph:
+    return InputRichBlockParagraph(text)
+
+def quote(blocks, credit=None) -> InputRichBlockBlockQuotation:
+    if not isinstance(blocks, (list, tuple)):
+        blocks = [blocks]
+    return InputRichBlockBlockQuotation(list(blocks), credit=credit)
+
+def pre(text, language: str | None = None) -> InputRichBlockPreformatted:
+    return InputRichBlockPreformatted(text, language=language)
+
+def math(expression: str) -> InputRichBlockMathematicalExpression:
+    return InputRichBlockMathematicalExpression(expression)
+
+def divider() -> InputRichBlockDivider:
+    return InputRichBlockDivider()
+
+def footer(text) -> InputRichBlockFooter:
+    return InputRichBlockFooter(text)
+
+def details(summary, blocks, is_open: bool = False) -> InputRichBlockDetails:
+    if not isinstance(blocks, (list, tuple)):
+        blocks = [blocks]
+    return InputRichBlockDetails(summary, list(blocks), is_open=is_open)
+
+def _item(text, **kwargs) -> InputRichBlockListItem:
+    return InputRichBlockListItem([para(text)], **kwargs)
+
+def bullets(items) -> InputRichBlockList:
+    return InputRichBlockList([_item(t) if not isinstance(t, InputRichBlockListItem)
+                               else t for t in items])
+
+def checklist(items) -> InputRichBlockList:
+    """items: list of (checked: bool, teks)."""
+    out = []
+    for checked, text in items:
+        out.append(_item(text, has_checkbox=True, is_checked=bool(checked)))
+    return InputRichBlockList(out)
 
 def _cell(value):
     if value is None:
@@ -75,22 +143,34 @@ def _cell(value):
         return value
     return str(value)
 
-
 def table(rows, header: bool = False, striped: bool = True,
-          bordered: bool = False) -> InputRichBlockTable:
+          bordered: bool = False, compact: bool = False,
+          align: str = "left") -> InputRichBlockTable:
     cells = [
         [
             RichBlockTableCell(text=_cell(c), is_header=bool(header and i == 0),
-                               align="left")
+                               align=align)
             for c in row
         ]
         for i, row in enumerate(rows)
     ]
-    return InputRichBlockTable(cells, is_bordered=bordered, is_striped=striped)
+    return InputRichBlockTable(cells, is_bordered=bordered, is_striped=striped,
+                               is_compact=compact)
 
+def kv_table(rows, value_align: str = "left") -> InputRichBlockTable:
+    """Tabel 2 kolom label/nilai, rata kiri-kanan tanpa header."""
+    cells = [
+        [
+            RichBlockTableCell(text=_cell(k), align="left"),
+            RichBlockTableCell(text=_cell(v), align=value_align),
+        ]
+        for k, v in rows
+    ]
+    return InputRichBlockTable(cells, is_bordered=False, is_striped=True)
 
-def rbtn(text: str, style=DEFAULT, callback_data=None, url=None,
-         disabled: bool = False) -> RichMessageButton:
+def rbtn(text, style=DEFAULT, callback_data=None, url=None,
+         copy: str | None = None, disabled: bool = False,
+         web_app=None, switch_inline_query: str | None = None) -> RichMessageButton:
     kwargs = {}
     if disabled:
         kwargs["disabled"] = DisabledButton()
@@ -98,22 +178,26 @@ def rbtn(text: str, style=DEFAULT, callback_data=None, url=None,
         kwargs["callback_data"] = callback_data
     elif url is not None:
         kwargs["url"] = url
+    elif copy is not None:
+        kwargs["copy_text"] = CopyTextButton(text=str(copy))
+    elif web_app is not None:
+        kwargs["web_app"] = web_app
+    elif switch_inline_query is not None:
+        kwargs["switch_inline_query"] = switch_inline_query
     else:
         kwargs["callback_data"] = "noop"
     return RichMessageButton(text, style=style, **kwargs)
 
-
 def buttons(row, align: str | None = "center") -> InputRichBlockButtons:
     return InputRichBlockButtons(list(row), align=align)
 
+def rich(blocks, media=None) -> InputRichMessage:
+    return InputRichMessage(blocks=list(blocks), media=media)
 
-def rich(blocks) -> InputRichMessage:
-    return InputRichMessage(blocks=list(blocks))
-
+# ---------- kirim / edit ----------
 
 def _text_of(msg: InputRichMessage, text: str | None) -> str:
     return text or msg.html or msg.markdown or "⚠️ (pesan kosong)"
-
 
 async def _send_plain(client, chat_id, text, reply_markup, effect, **kwargs):
     for eff in (effect, None):
@@ -132,12 +216,11 @@ async def _send_plain(client, chat_id, text, reply_markup, effect, **kwargs):
                 logger.warning("Gagal kirim pesan: %s", err)
     return None
 
-
-async def reply(client, message, *, blocks=None, html: str | None = None,
+async def reply(client, message, *, blocks=None, media=None, html: str | None = None,
                 fallback: str | None = None, reply_markup=None,
                 effect: int | None = None, with_effect: bool = True, **kwargs):
     """Balas pesan dengan rich message; fallback otomatis ke HTML."""
-    msg = InputRichMessage(blocks=blocks, html=html)
+    msg = InputRichMessage(blocks=blocks, html=html, media=media)
     text = _text_of(msg, fallback)
     chat_id = message.chat.id
     private = str(getattr(message.chat, "type", "")).endswith("PRIVATE")
@@ -147,13 +230,12 @@ async def reply(client, message, *, blocks=None, html: str | None = None,
         try:
             return await client.send_rich_message(
                 chat_id, msg, reply_markup=reply_markup,
-                effect_id=eff, reply_parameters=_reply_params(message),
+                effect_id=eff, reply_parameters=ReplyParameters(message_id=message.id),
             )
         except Exception as err:
             _note_fail()
             logger.warning("Rich message gagal (%s) -> fallback HTML.", err)
     return await _send_plain(client, chat_id, text, reply_markup, eff, **kwargs)
-
 
 async def edit(client, message, *, blocks=None, html: str | None = None,
                fallback: str | None = None, reply_markup=None):
@@ -175,9 +257,3 @@ async def edit(client, message, *, blocks=None, html: str | None = None,
         return message
     except Exception:
         return message
-
-
-def _reply_params(message):
-    from pyrogram.types import ReplyParameters
-
-    return ReplyParameters(message_id=message.id)

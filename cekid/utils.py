@@ -40,37 +40,48 @@ async def user_card(client, user):
         bio = None
 
     photo = _photo_id(user)
+    name = full_name(user)
     rows = [
-        ("🆔 ID", str(user.id)),
+        ("🆔 ID", rich.code(user.id)),
         ("👤 First Name", user.first_name or NA),
         ("👥 Last Name", user.last_name or NA),
         ("🔗 Username", f"@{user.username}" if user.username else NA),
         ("🌐 DC ID", getattr(user, "dc_id", None) or UNKNOWN),
-        ("🖼 Photo", "✅" if photo else "none"),
-        ("⭐️ Premium", yesno(user.is_premium)),
-        ("🤖 Bot", yesno(user.is_bot)),
-        ("🔗 Permanent Link", rich.html_link(full_name(user), perm_link(user))),
-        ("📝 Bio", bio or NA),
+        ("🖼 Photo", "✅ ada" if photo else "none"),
+        ("⭐️ Premium", rich.bold(yesno(user.is_premium))),
+        ("🤖 Bot", rich.bold(yesno(user.is_bot))),
+        ("🔗 Permanent Link", rich.link(name, perm_link(user))),
     ]
 
     text = (
-        "👤 <b>User Information</b>\n\n"
+        "👤 <b>User Information</b>\n"
+        "<i>Semua detail akun Telegram yang bisa dibaca bot.</i>\n\n"
         f"🆔 <b>ID:</b> <code>{user.id}</code>\n"
         f"👤 <b>First Name:</b> {esc(user.first_name)}\n"
         f"👥 <b>Last Name:</b> {esc(user.last_name) if user.last_name else NA}\n"
         f"🔗 <b>Username:</b> {'@' + user.username if user.username else NA}\n"
         f"🌐 <b>DC ID:</b> {getattr(user, 'dc_id', None) or UNKNOWN}\n"
-        f"🖼 <b>Photo:</b> {'✅' if photo else 'none'}\n"
+        f"🖼 <b>Photo:</b> {'✅ ada' if photo else 'none'}\n"
         f"⭐️ <b>Premium:</b> {yesno(user.is_premium)}\n"
         f"🤖 <b>Bot:</b> {yesno(user.is_bot)}\n"
-        f"🔗 <b>Permanent Link:</b> <a href=\"{perm_link(user)}\">{esc(full_name(user))}</a>\n"
-        f"📝 <b>Bio:</b> {esc(bio) if bio else NA}"
+        f"🔗 <b>Permanent Link:</b> <a href=\"{perm_link(user)}\">{esc(name)}</a>"
     )
 
     blocks = [
-        rich.heading("👤 User Information", 3),
-        rich.table(rows, striped=True),
+        rich.title("👤 User Information"),
+        rich.para(rich.italic("Semua detail akun Telegram yang bisa dibaca bot.")),
+        rich.divider(),
+        rich.kv_table(rows),
     ]
+    if bio:
+        blocks += [
+            rich.divider(),
+            rich.heading("📝 Bio", 3),
+            rich.quote([rich.para(bio)]),
+        ]
+    else:
+        blocks.append(rich.footer("📝 Bio: tidak ada"))
+
     return blocks, text, photo
 
 
@@ -85,35 +96,47 @@ async def chat_card(client, chat):
             members = await client.get_chat_members_count(chat.id)
         except Exception:
             members = None
-    description = getattr(chat, "description", None) or NA
+    description = getattr(chat, "description", None) or None
     title = getattr(chat, "title", None) or full_name(chat)
     is_forum = getattr(chat, "is_forum", None)
+    ctype = str(getattr(chat, "type", NA)).replace("ChatType.", "")
 
     rows = [
-        ("🆔 ID", str(chat.id)),
+        ("🆔 ID", rich.code(chat.id)),
         ("👤 Title", title),
         ("🔗 Username", username),
-        ("💬 Type", str(getattr(chat, "type", NA))),
+        ("💬 Type", ctype),
         ("🧵 Forum", yesno(is_forum) if is_forum is not None else NA),
         ("🔄 Members", members if members is not None else NA),
         ("🌐 DC ID", getattr(chat, "dc_id", None) or UNKNOWN),
-        ("📝 Description", description),
     ]
     text = (
-        "💬 <b>Chat Information</b>\n\n"
+        "💬 <b>Chat Information</b>\n"
+        "<i>Detail channel / group / forum.</i>\n\n"
         f"🆔 <b>ID:</b> <code>{chat.id}</code>\n"
         f"👤 <b>Title:</b> {esc(title)}\n"
         f"🔗 <b>Username:</b> {username}\n"
-        f"💬 <b>Type:</b> {getattr(chat, 'type', NA)}\n"
+        f"💬 <b>Type:</b> {ctype}\n"
         f"🧵 <b>Forum:</b> {yesno(is_forum) if is_forum is not None else NA}\n"
         f"🔄 <b>Members:</b> {members if members is not None else NA}\n"
-        f"🌐 <b>DC ID:</b> {getattr(chat, 'dc_id', None) or UNKNOWN}\n"
-        f"📝 <b>Description:</b> {esc(description)}"
+        f"🌐 <b>DC ID:</b> {getattr(chat, 'dc_id', None) or UNKNOWN}"
     )
     blocks = [
-        rich.heading("💬 Chat Information", 3),
-        rich.table(rows, striped=True),
+        rich.title("💬 Chat Information"),
+        rich.para(rich.italic("Detail channel / group / forum.")),
+        rich.divider(),
+        rich.kv_table(rows),
     ]
+    if description:
+        blocks += [
+            rich.divider(),
+            rich.heading("📝 Description", 3),
+            rich.quote([rich.para(description)]),
+        ]
+        text += f"\n📝 <b>Description:</b> {esc(description)}"
+    else:
+        blocks.append(rich.footer("📝 Description: tidak ada"))
+
     return blocks, text
 
 
@@ -138,6 +161,17 @@ async def resolve_chat(client, text: str):
         return None
 
 
+def user_buttons(user):
+    """Tombol rich message: salin ID + buka profil."""
+    from cekid import rich
+
+    row = [rich.rbtn("📋 Salin ID", style=rich.PRIMARY, copy=str(user.id))]
+    if getattr(user, "username", None):
+        row.append(rich.rbtn("🔗 Buka Profil", style=rich.SUCCESS,
+                             url=perm_link(user)))
+    return rich.buttons(row)
+
+
 async def reply_user_card(client, message, user, badge: str | None = None,
                           reply_markup=None):
     """Kirim kartu user: foto+caption kalau ada PP, kalau tidak rich message."""
@@ -147,6 +181,7 @@ async def reply_user_card(client, message, user, badge: str | None = None,
     if badge:
         blocks.insert(1, rich.para(badge))
         text = f"{badge}\n\n{text}"
+    blocks.append(user_buttons(user))
     if photo:
         try:
             private = str(getattr(message.chat, "type", "")).endswith("PRIVATE")
@@ -165,4 +200,7 @@ async def reply_chat_card(client, message, chat):
     from cekid import rich
 
     blocks, text = await chat_card(client, chat)
+    blocks.append(rich.buttons([
+        rich.rbtn("📋 Salin ID", style=rich.PRIMARY, copy=str(chat.id)),
+    ]))
     return await rich.reply(client, message, blocks=blocks, fallback=text)
