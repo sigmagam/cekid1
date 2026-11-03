@@ -45,7 +45,6 @@ def _user_button(text: str, button_id: int, *, is_bot: bool | None = None,
 
 def _chat_button(text: str, button_id: int, *, is_channel: bool,
                  is_forum: bool | None = None, created: bool | None = None,
-                 bot_member: bool | None = None,
                  style: enums.ButtonStyle = PRIMARY) -> KeyboardButton:
     return KeyboardButton(
         text,
@@ -55,7 +54,6 @@ def _chat_button(text: str, button_id: int, *, is_channel: bool,
             chat_is_channel=is_channel,
             chat_is_forum=is_forum,
             chat_is_created=created,
-            bot_is_member=bot_member,
             request_title=True,
             request_username=True,
             request_photo=True,
@@ -81,11 +79,11 @@ def main_menu() -> ReplyKeyboardMarkup:
                 _chat_button("📢 Channel", REQ_CHANNEL, is_channel=True),
             ],
             [
+                # chat_is_created=True -> hanya chat yang user sendiri buat (dia owner).
                 _chat_button("🗂 My Group", REQ_MYGROUP, is_channel=False,
-                             is_forum=None, created=True, bot_member=True,
-                             style=SUCCESS),
+                             is_forum=None, created=True, style=SUCCESS),
                 _chat_button("📚 My Channel", REQ_MYCHANNEL, is_channel=True,
-                             created=True, bot_member=True, style=SUCCESS),
+                             created=True, style=SUCCESS),
             ],
         ],
         resize_keyboard=True,

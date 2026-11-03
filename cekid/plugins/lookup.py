@@ -3,9 +3,17 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
-from cekid import bot, store
+from cekid import bot, rich, store
 from cekid.keyboards import REQ_BOT, REQ_PREMIUM
-from cekid.utils import reply_user_card
+from cekid.utils import full_name, reply_user_card
+
+CEK_HELP = (
+    "🔎 <b>Cara pakai /cek</b>\n\n"
+    "• <code>/cek 123456789</code>\n"
+    "• <code>/cek @username</code>\n"
+    "• balas pesan user lalu ketik <code>/cek</code>\n"
+    "• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium di menu."
+)
 
 
 @Client.on_message(filters.users_shared)
@@ -16,10 +24,10 @@ async def on_user_shared(_, message: Message):
     try:
         user = await bot.get_users(shared.users[0].id)
     except Exception:
-        return await message.reply("❌ User tidak bisa dibaca.")
+        return await rich.reply(bot, message, fallback="❌ User tidak bisa dibaca.")
 
     if shared.button_id == REQ_BOT and not user.is_bot:
-        return await message.reply(f"⚠️ {user.mention} bukan bot.")
+        return await rich.reply(bot, message, fallback=f"⚠️ {full_name(user)} bukan bot.")
     if shared.button_id == REQ_PREMIUM:
         badge = "⭐️ <b>Premium:</b> Yes" if user.is_premium else "⭐️ <b>Premium:</b> No"
         return await reply_user_card(bot, message, user, badge=badge)
@@ -39,11 +47,15 @@ async def cek_cmd(_, message: Message):
             target = None
 
     if target is None:
-        return await message.reply(
-            "Pakai salah satu:\n"
-            "• <code>/cek 123456789</code>\n"
-            "• <code>/cek @username</code>\n"
-            "• balas pesan user lalu ketik <code>/cek</code>\n"
-            "• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium di menu."
+        return await rich.reply(
+            bot, message,
+            blocks=[
+                rich.heading("🔎 Cara Pakai /cek", 3),
+                rich.para("• <code>/cek 123456789</code>"),
+                rich.para("• <code>/cek @username</code>"),
+                rich.para("• balas pesan user lalu ketik <code>/cek</code>"),
+                rich.para("• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium"),
+            ],
+            fallback=CEK_HELP,
         )
     return await reply_user_card(bot, message, target)
