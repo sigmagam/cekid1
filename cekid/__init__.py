@@ -38,15 +38,15 @@ class CekIdBot(Client):
             plugins=dict(root="cekid/plugins"),
         )
 
-    async def start(self) -> "CekIdBot":
-        await super().start()
+    async def start(self, *args, **kwargs) -> "CekIdBot":
+        await super().start(*args, **kwargs)
         await self.set_bot_commands(COMMANDS)
         me = await self.get_me()
         log.info("✅ Bot aktif sebagai @%s", me.username or me.id)
         return self
 
-    async def stop(self, *args):
-        await super().stop()
+    async def stop(self, *args, **kwargs):
+        await super().stop(*args, **kwargs)
         log.info("Bot berhenti.")
 
 

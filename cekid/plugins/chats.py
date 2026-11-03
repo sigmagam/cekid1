@@ -4,9 +4,10 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from cekid import bot, store
+from cekid.ask import ask
 from cekid.keyboards import (TXT_CHANNEL, TXT_FORUM, TXT_GROUP, TXT_MYCHANNEL,
                              TXT_MYGROUP, chat_picker)
-from cekid.utils import chat_card, chat_kind, resolve_chat
+from cekid.utils import chat_card, resolve_chat
 
 PROMPT_CHAT = (
     "🔎 Kirim <b>id</b>, <b>@username</b>, balas sebuah pesan dari chat itu, "
@@ -33,11 +34,13 @@ async def chat_id(_, message: Message):
 
 
 async def _pick_and_show(message: Message, prompt: str, expect_forum: bool = False):
-    picker = chat_picker(
-        channel=True,
-        group=True,
+    asked = await ask(
+        bot,
+        message.chat.id,
+        prompt,
+        filter=filters.text | filters.chat_shared,
+        reply_markup=chat_picker(),
     )
-    asked = await message.reply(prompt, reply_markup=picker)
     if asked is None:
         return
     chat = await resolve_chat(bot, asked, expect_forum=expect_forum)

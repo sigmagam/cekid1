@@ -4,6 +4,7 @@ from pyrogram import filters
 from pyrogram.types import Message
 
 from cekid import bot, store
+from cekid.ask import ask
 from cekid.keyboards import TXT_BOT, TXT_PREMIUM, TXT_USER, user_picker
 from cekid.utils import user_card
 
@@ -26,7 +27,13 @@ async def ask_target(message: Message, prompt: str):
     """Minta target user (picker / balas pesan / id / @username). -> User | None."""
     from cekid.utils import resolve_user
 
-    asked = await message.reply(prompt, reply_markup=user_picker())
+    asked = await ask(
+        bot,
+        message.chat.id,
+        prompt,
+        filter=filters.text | filters.users_shared,
+        reply_markup=user_picker(),
+    )
     if asked is None:
         return None
     return await resolve_user(bot, asked)
