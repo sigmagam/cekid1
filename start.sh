@@ -7,6 +7,10 @@ if screen -ls 2>/dev/null | grep -q "\.cekid1"; then
     echo "Screen cekid1 sudah jalan."
     exit 0
 fi
+if fuser /root/cekid1/.cekid.lock >/dev/null 2>&1; then
+    echo "Bot cekid1 sudah jalan (lewat nohup)."
+    exit 0
+fi
 
 if command -v screen >/dev/null 2>&1; then
     screen -dmS cekid1 /root/cekid1/run.sh
@@ -18,9 +22,5 @@ if command -v screen >/dev/null 2>&1; then
     echo "⚠️ screen gagal dibuat, pakai nohup..."
 fi
 
-if pgrep -f '/root/cekid1/run.sh' >/dev/null; then
-    echo "run.sh sudah jalan."
-    exit 0
-fi
 nohup /root/cekid1/run.sh >> /root/cekid1/cekid.log 2>&1 &
 echo "✅ cekid1 jalan via nohup (log: /root/cekid1/cekid.log)"
