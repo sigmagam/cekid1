@@ -89,68 +89,21 @@ async def chat_card(client, chat) -> str:
 
 
 def _looks_like_id(text: str) -> bool:
-    t = text.strip()
-    return t.lstrip("-").isdigit()
+    return text.strip().lstrip("-").isdigit()
 
 
-async def resolve_user(client, msg):
-    """Ambil User dari pesan (picker / balas pesan / id / @username)."""
-    shared = getattr(msg, "users_shared", None)
-    if shared and shared.users:
-        try:
-            return await client.get_users(shared.users[0].id)
-        except Exception:
-            return None
-
-    if getattr(msg, "reply_to_message", None) and msg.reply_to_message.from_user:
-        return msg.reply_to_message.from_user
-
-    text = (msg.text or "").strip()
+async def resolve_chat(client, text: str):
+    """Ambil Chat dari id atau @username."""
+    text = (text or "").strip()
+    if not text:
+        return None
     if _looks_like_id(text):
-        try:
-            return await client.get_users(int(text))
-        except Exception:
-            return None
-    if text.startswith("@") or text:
-        try:
-            return await client.get_users(text)
-        except Exception:
-            return None
-    return None
-
-
-async def resolve_chat(client, msg, expect_forum: bool = False):
-    """Ambil Chat dari pesan (picker / balas pesan / id / @username)."""
-    shared = getattr(msg, "chat_shared", None)
-    chat_id = None
-    if shared and shared.chat:
-        chat_id = shared.chat.id
-    elif getattr(msg, "reply_to_message", None):
-        chat_id = msg.reply_to_message.chat.id
+        target = int(text)
+    elif text.startswith("@"):
+        target = text
     else:
-        text = (msg.text or "").strip()
-        if _looks_like_id(text):
-            chat_id = int(text)
-        elif text.startswith("@"):
-            chat_id = text
-
-    if chat_id is None:
         return None
     try:
-        chat = await client.get_chat(chat_id)
+        return await client.get_chat(target)
     except Exception:
         return None
-    if expect_forum and not getattr(chat, "is_forum", False):
-        return chat
-    return chat
-
-
-def chat_kind(chat) -> str:
-    t = str(getattr(chat, "type", ""))
-    if t.endswith("CHANNEL"):
-        return "channel"
-    if t.endswith("SUPERGROUP"):
-        return "supergroup"
-    if t.endswith("GROUP"):
-        return "group"
-    return "user"

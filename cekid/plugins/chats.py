@@ -1,18 +1,11 @@
-"""Group / Channel / Forum + daftar chat yang pernah dilihat bot."""
+"""Group / Channel / Forum (tombol request → hasil langsung) + daftar chat bot."""
 
 from pyrogram import Client, filters
 from pyrogram.types import LinkPreviewOptions, Message
 
 from cekid import bot, store
-from cekid.ask import ask
-from cekid.keyboards import (TXT_CHANNEL, TXT_FORUM, TXT_GROUP, TXT_MYCHANNEL,
-                             TXT_MYGROUP, chat_picker)
+from cekid.keyboards import TXT_MYCHANNEL, TXT_MYGROUP
 from cekid.utils import chat_card, resolve_chat
-
-PROMPT_CHAT = (
-    "🔎 Kirim <b>id</b>, <b>@username</b>, balas sebuah pesan dari chat itu, "
-    "atau tekan tombol pilih di bawah."
-)
 
 
 @Client.on_message(filters.group | filters.channel, group=-1)
@@ -21,55 +14,33 @@ async def record(_, message: Message):
     store.save_chat(message.chat)
 
 
+@Client.on_message(filters.chat_shared)
+async def on_chat_shared(_, message: Message):
+    """Dari tombol 👥 Group / 📢 Channel / 💬 Forum."""
+    store.save_chat(message.chat)
+    shared = message.chat_shared
+    if not shared or not shared.chat:
+        return
+    store.save_chat(shared.chat)
+    return await message.reply(await chat_card(bot, shared.chat))
+
+
 @Client.on_message(filters.command("id"))
 async def chat_id(_, message: Message):
     store.save_chat(message.chat)
+    if len(message.command) > 1:
+        chat = await resolve_chat(bot, message.command[1])
+        if chat is None:
+            return await message.reply("❌ Chat tidak ditemukan.")
+        store.save_chat(chat)
+        return await message.reply(await chat_card(bot, chat))
+
     chat = message.chat
-    target = message.reply_to_message.from_user if message.reply_to_message else None
     lines = [f"🆔 <b>Chat ID:</b> <code>{chat.id}</code>",
              f"💬 <b>Type:</b> {chat.type}"]
-    if target:
-        lines.append(f"👤 <b>User ID:</b> <code>{target.id}</code>")
+    if message.reply_to_message and message.reply_to_message.from_user:
+        lines.append(f"👤 <b>User ID:</b> <code>{message.reply_to_message.from_user.id}</code>")
     return await message.reply("\n".join(lines))
-
-
-async def _pick_and_show(message: Message, prompt: str, expect_forum: bool = False):
-    asked = await ask(
-        bot,
-        message.chat.id,
-        prompt,
-        filter=filters.text | filters.chat_shared,
-        reply_markup=chat_picker(),
-    )
-    if asked is None:
-        return
-    chat = await resolve_chat(bot, asked, expect_forum=expect_forum)
-    if chat is None:
-        return await message.reply("❌ Chat tidak ditemukan / bot belum mengenalnya.")
-    store.save_chat(chat)
-    return await message.reply(await chat_card(bot, chat))
-
-
-@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_GROUP}$"))
-async def cek_group(_, message: Message):
-    return await _pick_and_show(
-        message, f"👥 Kirim target <b>group</b>.\n\n{PROMPT_CHAT}"
-    )
-
-
-@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_CHANNEL}$"))
-async def cek_channel(_, message: Message):
-    return await _pick_and_show(
-        message, f"📢 Kirim target <b>channel</b>.\n\n{PROMPT_CHAT}"
-    )
-
-
-@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_FORUM}$"))
-async def cek_forum(_, message: Message):
-    return await _pick_and_show(
-        message, f"💬 Kirim target <b>forum</b> (supergroup dengan topik).\n\n{PROMPT_CHAT}",
-        expect_forum=True,
-    )
 
 
 def _list_text(rows, title: str) -> str:
@@ -93,10 +64,16 @@ def _list_text(rows, title: str) -> str:
 @Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYGROUP}$"))
 async def my_groups(_, message: Message):
     rows = store.chats(["ChatType.GROUP", "ChatType.SUPERGROUP"])
-    return await message.reply(_list_text(rows, "🗂 <b>My Group</b>"), link_preview_options=LinkPreviewOptions(is_disabled=True))
+    return await message.reply(
+        _list_text(rows, "🗂 <b>My Group</b>"),
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+    )
 
 
 @Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYCHANNEL}$"))
 async def my_channels(_, message: Message):
     rows = store.chats(["ChatType.CHANNEL"])
-    return await message.reply(_list_text(rows, "📚 <b>My Channel</b>"), link_preview_options=LinkPreviewOptions(is_disabled=True))
+    return await message.reply(
+        _list_text(rows, "📚 <b>My Channel</b>"),
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+    )

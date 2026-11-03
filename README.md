@@ -7,14 +7,16 @@ Bot Telegram untuk cek **ID user & chat**. Python + [kurigram](https://pypi.org/
 
 - `/start` — kartu **User Information** lengkap (ID, nama, username, DC, premium, bot, language, permanent link, bio).
 - Kirim foto profil **bareng** kartu kalau user punya PP.
-- Tombol **reply keyboard berwarna** (PRIMARY / SUCCESS / DEFAULT):
-  - 👤 `User` — info user (balas pesan, `id`, `@username`, atau tombol *pilih user*)
-  - ⭐️ `Premium` — cek status premium
-  - 🤖 `Bot` — info sebuah bot
-  - 👥 `Group` · 📢 `Channel` · 💬 `Forum` — info chat
+- Keyboard menu berwarna (PRIMARY / SUCCESS). **Sekali tekan langsung buka dialog native**
+  Telegram — tidak ada keyboard perantara:
+  - 👤 `User` · ⭐️ `Premium` · 🤖 `Bot` (picker user, sudah difilter bot/premium)
+  - 💬 `Forum` · 👥 `Group` · 📢 `Channel` (picker chat)
   - 🗂 `My Group` · 📚 `My Channel` — daftar chat yang bot sudah lihat (SQLite)
-- `/id` — ID chat sekarang (dan ID user kalau dipakai reply).
-- `/cek` — cek cepat user.
+- **Forum** = supergroup dengan topik (`chat_is_channel=False` + `chat_is_forum=True`),
+  bukan channel dan bukan group biasa.
+- `/id` — ID chat sekarang; `/id <id|@username>` untuk kartu info chat; `/id` saat balas pesan
+  sekalian tampilkan ID user.
+- `/cek` — `123456789`, `@username`, atau balas pesan user.
 - Semua chat yang bot lihat otomatis disimpan ke SQLite (`cekid.db`), bukan JSON.
 
 ## Contoh kartu
@@ -47,12 +49,12 @@ cekid1/
     ├── __init__.py          # kelas Client + command menu
     ├── config.py            # baca .env
     ├── store.py             # SQLite: chat yang pernah dilihat
-    ├── keyboards.py         # semua keyboard (reply + inline)
-    ├── utils.py             # resolve target + format kartu
+    ├── keyboards.py         # menu request-button (user/chat picker) + inline
+    ├── utils.py             # resolve chat + format kartu
     └── plugins/
         ├── start.py         # /start, /help
-        ├── lookup.py        # user / premium / bot
-        └── chats.py         # group / channel / forum / my group / my channel
+        ├── lookup.py        # users_shared -> user / premium / bot, /cek
+        └── chats.py         # chat_shared -> group / channel / forum, /id, my group/channel
 ```
 
 ## Instalasi

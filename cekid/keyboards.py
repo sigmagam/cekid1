@@ -1,4 +1,9 @@
-"""Semua keyboard bot (reply keyboard berwarna + inline)."""
+"""Semua keyboard bot (reply keyboard berwarna + inline).
+
+Tombol menu utama sudah berupa tombol *request* Telegram: sekali tekan
+langsung membuka dialog native (pilih user / channel / group / forum) —
+tidak ada keyboard perantara.
+"""
 
 from pyrogram import enums
 from pyrogram.types import (InlineKeyboardButton, InlineKeyboardMarkup,
@@ -10,105 +15,80 @@ SUCCESS = enums.ButtonStyle.SUCCESS
 DANGER = enums.ButtonStyle.DANGER
 DEFAULT = enums.ButtonStyle.DEFAULT
 
+# button_id unik per fitur; dipakai untuk tahu user minta apa waktu service
+# message users_shared / chat_shared masuk.
 REQ_USER = 701
-REQ_CHANNEL = 702
-REQ_GROUP = 703
-REQ_FORUM = 704
+REQ_PREMIUM = 702
+REQ_BOT = 703
+REQ_GROUP = 704
+REQ_CHANNEL = 705
+REQ_FORUM = 706
 
-TXT_USER = "👤 User"
-TXT_PREMIUM = "⭐️ Premium"
-TXT_BOT = "🤖 Bot"
-TXT_GROUP = "👥 Group"
-TXT_CHANNEL = "📢 Channel"
-TXT_FORUM = "💬 Forum"
 TXT_MYGROUP = "🗂 My Group"
 TXT_MYCHANNEL = "📚 My Channel"
 
-MAIN_BUTTONS = {
-    TXT_USER, TXT_PREMIUM, TXT_BOT, TXT_GROUP,
-    TXT_CHANNEL, TXT_FORUM, TXT_MYGROUP, TXT_MYCHANNEL,
-}
+
+def _user_button(text: str, button_id: int, *, is_bot: bool | None = None,
+                 is_premium: bool | None = None,
+                 style: enums.ButtonStyle = PRIMARY) -> KeyboardButton:
+    return KeyboardButton(
+        text,
+        style=style,
+        request_users=KeyboardButtonRequestUsers(
+            button_id=button_id,
+            user_is_bot=is_bot,
+            user_is_premium=is_premium,
+            request_name=True,
+            request_username=True,
+            max_quantity=1,
+        ),
+    )
+
+
+def _chat_button(text: str, button_id: int, *, is_channel: bool,
+                 is_forum: bool | None = None,
+                 style: enums.ButtonStyle = PRIMARY) -> KeyboardButton:
+    return KeyboardButton(
+        text,
+        style=style,
+        request_chat=KeyboardButtonRequestChat(
+            button_id=button_id,
+            chat_is_channel=is_channel,
+            chat_is_forum=is_forum,
+            request_title=True,
+            request_username=True,
+            request_photo=True,
+        ),
+    )
 
 
 def main_menu() -> ReplyKeyboardMarkup:
+    """Sekali tekan = langsung buka dialog pilih user/chat (tanpa keyboard lain)."""
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(TXT_USER, style=PRIMARY),
-             KeyboardButton(TXT_PREMIUM, style=SUCCESS)],
-            [KeyboardButton(TXT_BOT, style=DEFAULT),
-             KeyboardButton(TXT_FORUM, style=DEFAULT)],
-            [KeyboardButton(TXT_GROUP, style=PRIMARY),
-             KeyboardButton(TXT_CHANNEL, style=PRIMARY)],
-            [KeyboardButton(TXT_MYGROUP, style=SUCCESS),
-             KeyboardButton(TXT_MYCHANNEL, style=SUCCESS)],
+            [
+                _user_button("👤 User", REQ_USER),
+                _user_button("⭐️ Premium", REQ_PREMIUM, is_premium=True, style=SUCCESS),
+            ],
+            [
+                _user_button("🤖 Bot", REQ_BOT, is_bot=True),
+                _chat_button("💬 Forum", REQ_FORUM, is_channel=False, is_forum=True),
+            ],
+            [
+                _chat_button("👥 Group", REQ_GROUP, is_channel=False, is_forum=False),
+                _chat_button("📢 Channel", REQ_CHANNEL, is_channel=True),
+            ],
+            [
+                KeyboardButton(TXT_MYGROUP, style=SUCCESS),
+                KeyboardButton(TXT_MYCHANNEL, style=SUCCESS),
+            ],
         ],
         resize_keyboard=True,
         is_persistent=True,
     )
 
 
-def user_picker() -> ReplyKeyboardMarkup:
-    """Reply keyboard: pilih user lewat dialog native Telegram."""
-    return ReplyKeyboardMarkup(
-        keyboard=[[
-            KeyboardButton(
-                "🔍 Pilih User",
-                style=PRIMARY,
-                request_users=KeyboardButtonRequestUsers(
-                    button_id=REQ_USER,
-                    request_name=True,
-                    request_username=True,
-                    max_quantity=1,
-                ),
-            )
-        ]],
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
-
-
-def chat_picker(channel: bool = True, group: bool = True, forum: bool = False) -> ReplyKeyboardMarkup:
-    row = []
-    if channel:
-        row.append(
-            KeyboardButton(
-                "📢 Pilih Channel",
-                style=PRIMARY,
-                request_chat=KeyboardButtonRequestChat(
-                    button_id=REQ_CHANNEL if not forum else REQ_FORUM,
-                    chat_is_channel=True,
-                    request_title=True,
-                    request_username=True,
-                ),
-            )
-        )
-    if group:
-        row.append(
-            KeyboardButton(
-                "👥 Pilih Group",
-                style=SUCCESS,
-                request_chat=KeyboardButtonRequestChat(
-                    button_id=REQ_GROUP if not forum else REQ_FORUM,
-                    chat_is_channel=False,
-                    request_title=True,
-                    request_username=True,
-                ),
-            )
-        )
-    return ReplyKeyboardMarkup(
-        keyboard=[row] if row else None,
-        resize_keyboard=True,
-        one_time_keyboard=True,
-    )
-
-
 def close_inline() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         [[InlineKeyboardButton("❌ Tutup", callback_data="close", style=DANGER)]]
-    )
-
-
-def back_inline() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("⬅️ Kembali", callback_data="back", style=PRIMARY)]]
     )
