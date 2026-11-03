@@ -1,7 +1,7 @@
 """Group / Channel / Forum + daftar chat yang pernah dilihat bot."""
 
-from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram import Client, filters
+from pyrogram.types import LinkPreviewOptions, Message
 
 from cekid import bot, store
 from cekid.ask import ask
@@ -15,13 +15,13 @@ PROMPT_CHAT = (
 )
 
 
-@bot.on_message(filters.group | filters.channel, group=-1)
+@Client.on_message(filters.group | filters.channel, group=-1)
 async def record(_, message: Message):
     """Catat setiap chat yang bot lihat -> dipakai tombol My Group / My Channel."""
     store.save_chat(message.chat)
 
 
-@bot.on_message(filters.command("id"))
+@Client.on_message(filters.command("id"))
 async def chat_id(_, message: Message):
     store.save_chat(message.chat)
     chat = message.chat
@@ -50,21 +50,21 @@ async def _pick_and_show(message: Message, prompt: str, expect_forum: bool = Fal
     return await message.reply(await chat_card(bot, chat))
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_GROUP}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_GROUP}$"))
 async def cek_group(_, message: Message):
     return await _pick_and_show(
         message, f"👥 Kirim target <b>group</b>.\n\n{PROMPT_CHAT}"
     )
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_CHANNEL}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_CHANNEL}$"))
 async def cek_channel(_, message: Message):
     return await _pick_and_show(
         message, f"📢 Kirim target <b>channel</b>.\n\n{PROMPT_CHAT}"
     )
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_FORUM}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_FORUM}$"))
 async def cek_forum(_, message: Message):
     return await _pick_and_show(
         message, f"💬 Kirim target <b>forum</b> (supergroup dengan topik).\n\n{PROMPT_CHAT}",
@@ -90,13 +90,13 @@ def _list_text(rows, title: str) -> str:
     return "\n".join(lines)
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYGROUP}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYGROUP}$"))
 async def my_groups(_, message: Message):
     rows = store.chats(["ChatType.GROUP", "ChatType.SUPERGROUP"])
-    return await message.reply(_list_text(rows, "🗂 <b>My Group</b>"), disable_web_page_preview=True)
+    return await message.reply(_list_text(rows, "🗂 <b>My Group</b>"), link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYCHANNEL}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_MYCHANNEL}$"))
 async def my_channels(_, message: Message):
     rows = store.chats(["ChatType.CHANNEL"])
-    return await message.reply(_list_text(rows, "📚 <b>My Channel</b>"), disable_web_page_preview=True)
+    return await message.reply(_list_text(rows, "📚 <b>My Channel</b>"), link_preview_options=LinkPreviewOptions(is_disabled=True))

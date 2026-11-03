@@ -1,7 +1,7 @@
 """Lookup user / premium / bot."""
 
-from pyrogram import filters
-from pyrogram.types import Message
+from pyrogram import Client, filters
+from pyrogram.types import LinkPreviewOptions, Message
 
 from cekid import bot, store
 from cekid.ask import ask
@@ -20,7 +20,7 @@ async def send_card(message: Message, user) -> Message:
             return await message.reply_photo(photo, caption=text)
         except Exception:
             pass
-    return await message.reply(text, disable_web_page_preview=True)
+    return await message.reply(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
 async def ask_target(message: Message, prompt: str):
@@ -39,7 +39,7 @@ async def ask_target(message: Message, prompt: str):
     return await resolve_user(bot, asked)
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_USER}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_USER}$"))
 async def cek_user(_, message: Message):
     store.save_chat(message.chat)
     user = await ask_target(message, PROMPT)
@@ -48,7 +48,7 @@ async def cek_user(_, message: Message):
     return await send_card(message, user)
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_PREMIUM}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_PREMIUM}$"))
 async def cek_premium(_, message: Message):
     store.save_chat(message.chat)
     user = await ask_target(message, "⭐️ Kirim target user untuk dicek status premium-nya.\n\n" + PROMPT)
@@ -62,10 +62,10 @@ async def cek_premium(_, message: Message):
             return await message.reply_photo(photo, caption=text)
         except Exception:
             pass
-    return await message.reply(text, disable_web_page_preview=True)
+    return await message.reply(text, link_preview_options=LinkPreviewOptions(is_disabled=True))
 
 
-@bot.on_message(filters.private & filters.text & filters.regex(f"^{TXT_BOT}$"))
+@Client.on_message(filters.private & filters.text & filters.regex(f"^{TXT_BOT}$"))
 async def cek_bot(_, message: Message):
     store.save_chat(message.chat)
     user = await ask_target(message, "🤖 Kirim bot (id / @username) untuk dicek.\n\n" + PROMPT)
@@ -73,13 +73,12 @@ async def cek_bot(_, message: Message):
         return await message.reply("❌ Bot tidak ditemukan.")
     if not user.is_bot:
         return await message.reply(
-            f"⚠️ <a href=\"tg://user?id={user.id}\">Akun ini</a> bukan bot.",
-            disable_web_page_preview=True,
+            f"⚠️ <a href=\"tg://user?id={user.id}\">Akun ini</a> bukan bot."
         )
     return await send_card(message, user)
 
 
-@bot.on_message(filters.command("cek"))
+@Client.on_message(filters.command("cek"))
 async def cek_cmd(_, message: Message):
     store.save_chat(message.chat)
     from cekid.utils import resolve_user
