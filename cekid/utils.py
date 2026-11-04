@@ -79,7 +79,7 @@ async def _photo_ids(client, chat_id, fallback=None, limit: int = 4) -> list[str
 
 
 async def user_card(client, user):
-    """-> (blocks, html_text, photo_file_id). Only shows data we actually have."""
+    """-> (blocks, html_text, photo_file_id). Clean card, details collapsed."""
     from cekid import rich
 
     bio = None
@@ -93,65 +93,65 @@ async def user_card(client, user):
     dc = getattr(user, "dc_id", None)
     photos = await _photo_ids(client, user.id, raw_photo)
 
+    blocks = [rich.title(f"👤 {name}")]
+    line = [rich.code(user.id)]
+    if getattr(user, "username", None):
+        line += ["  ·  ", f"@{user.username}"]
+    blocks.append(rich.para(line))
+
+    media = rich.photos(photos, rich.bold(name), credit=f"ID {user.id}")
+    if media is not None:
+        blocks += [rich.divider(), media]
+
+    badges = []
+    if user.is_bot is not None:
+        badges.append("🤖 Bot account" if user.is_bot else "👤 Human")
+    if user.is_premium:
+        badges.append("⭐️ Premium")
+    if dc:
+        badges.append(f"🌐 DC {dc}")
+    if len(photos) > 1:
+        badges.append(f"🖼 {len(photos)} photos")
+    if badges:
+        blocks.append(rich.para([rich.bold(" · ".join(badges))]))
+
     rows = [("🆔 ID", rich.code(user.id))]
     if getattr(user, "first_name", None):
-        rows.append(("👤 First Name", user.first_name))
+        rows.append(("👤 First name", user.first_name))
     if getattr(user, "last_name", None):
-        rows.append(("👥 Last Name", user.last_name))
+        rows.append(("👥 Last name", user.last_name))
     if getattr(user, "username", None):
         rows.append(("🔗 Username", f"@{user.username}"))
     if user.is_premium is not None:
-        rows.append(("⭐️ Premium", yesno(user.is_premium)))
+        rows.append(("⭐️ Premium", "Yes" if user.is_premium else "No"))
     if user.is_bot is not None:
-        rows.append(("🤖 Bot", yesno(user.is_bot)))
+        rows.append(("🤖 Bot", "Yes" if user.is_bot else "No"))
     if dc:
-        rows.append(("🌐 DC", str(dc)))
+        rows.append(("🌐 DC ID", str(dc)))
     if photos:
         rows.append(("🖼 Photos", str(len(photos))))
-    rows.append(("🔗 Permanent Link", rich.spoiler(rich.link(name, perm_link(user)))))
+    rows.append(("🔗 Permanent link", rich.spoiler(rich.link(name, perm_link(user)))))
+    blocks.append(rich.details("📄 Full details",
+                               [rich.table(rows, striped=True, compact=True)]))
 
-    text = f"👤 <b>User Information</b>\n🆔 <b>ID:</b> <code>{user.id}</code>"
-    if getattr(user, "first_name", None):
-        text += f"\n👤 <b>First Name:</b> {esc(user.first_name)}"
-    if getattr(user, "last_name", None):
-        text += f"\n👥 <b>Last Name:</b> {esc(user.last_name)}"
-    if getattr(user, "username", None):
-        text += f"\n🔗 <b>Username:</b> @{user.username}"
-    if user.is_premium is not None:
-        text += f"\n⭐️ <b>Premium:</b> {yesno(user.is_premium)}"
-    if user.is_bot is not None:
-        text += f"\n🤖 <b>Bot:</b> {yesno(user.is_bot)}"
-    if dc:
-        text += f"\n🌐 <b>DC:</b> {dc}"
+    if bio:
+        blocks += [rich.divider(), rich.heading("📝 Bio", 3),
+                   rich.quote([rich.para(bio)], credit=name)]
+
+    text = f"👤 <b>{esc(name)}</b>\n🆔 <code>{user.id}</code>"
+    for label, value in rows[1:]:
+        if label.startswith("🔗 Permanent"):
+            continue
+        text += f"\n<b>{label}:</b> {esc(value if isinstance(value, str) else rich.plain(value))}"
     if bio:
         text += f"\n📝 <b>Bio:</b> {esc(bio)}"
-    text += f"\n🔗 <b>Permanent Link:</b> <a href=\"{perm_link(user)}\">{esc(name)}</a>"
-
-    blocks = [
-        rich.title("👤 User Information"),
-        rich.para(rich.italic("Everything this bot is allowed to read from the account.")),
-        rich.divider(),
-    ]
-    caption = [rich.bold(name)]
-    if getattr(user, "username", None):
-        caption.append(f" @{user.username}")
-    media = rich.photos(photos, caption, credit=f"ID {user.id}")
-    if media is not None:
-        blocks.append(media)
-    blocks.append(rich.table(rows, striped=True, compact=True))
-    if bio:
-        blocks += [
-            rich.divider(),
-            rich.heading("📝 Bio", 3),
-            rich.quote([rich.para(bio)], credit=name),
-        ]
-    blocks.append(rich.footer("Tap the blurred link to open the profile."))
+    text += f"\n🔗 <a href=\"{perm_link(user)}\">{esc(name)}</a>"
 
     return blocks, text, raw_photo
 
 
 async def chat_card(client, chat):
-    """-> (blocks, html_text). Only shows data we actually have."""
+    """-> (blocks, html_text). Clean card, details collapsed."""
     from cekid import rich
 
     members = getattr(chat, "members_count", None)
@@ -169,6 +169,30 @@ async def chat_card(client, chat):
     fallback_photo = getattr(chat_photo, "big_file_id", None) if chat_photo else None
     photos = await _photo_ids(client, chat.id, fallback_photo, limit=4)
 
+    blocks = [rich.title(f"💬 {title}")]
+    line = [rich.code(chat.id)]
+    if ctype:
+        line += ["  ·  ", ctype.lower()]
+    if getattr(chat, "username", None):
+        line += ["  ·  ", f"@{chat.username}"]
+    blocks.append(rich.para(line))
+
+    media = rich.photos(photos, rich.bold(title), credit=f"ID {chat.id}")
+    if media is not None:
+        blocks += [rich.divider(), media]
+
+    badges = []
+    if members is not None:
+        badges.append(f"🔄 {members:,} users")
+    if is_forum:
+        badges.append("🧵 Forum")
+    if dc:
+        badges.append(f"🌐 DC {dc}")
+    if len(photos) > 1:
+        badges.append(f"🖼 {len(photos)} photos")
+    if badges:
+        blocks.append(rich.para([rich.bold(" · ".join(badges))]))
+
     rows = [("🆔 ID", rich.code(chat.id))]
     if title:
         rows.append(("👤 Title", title))
@@ -177,58 +201,36 @@ async def chat_card(client, chat):
     if ctype:
         rows.append(("💬 Type", ctype))
     if is_forum is not None:
-        rows.append(("🧵 Forum", yesno(is_forum)))
+        rows.append(("🧵 Forum", "Yes" if is_forum else "No"))
     if members is not None:
-        rows.append(("🔄 Members", [rich.code(members), rich.sub(" users")]))
+        rows.append(("🔄 Members", f"{members:,}"))
     if dc:
-        rows.append(("🌐 DC", str(dc)))
-    if photos:
-        rows.append(("🖼 Photos", str(len(photos))))
-
-    text = f"💬 <b>Chat Information</b>\n🆔 <b>ID:</b> <code>{chat.id}</code>"
-    if title:
-        text += f"\n👤 <b>Title:</b> {esc(title)}"
-    if getattr(chat, "username", None):
-        text += f"\n🔗 <b>Username:</b> @{chat.username}"
-    if ctype:
-        text += f"\n💬 <b>Type:</b> {ctype}"
-    if is_forum is not None:
-        text += f"\n🧵 <b>Forum:</b> {yesno(is_forum)}"
-    if members is not None:
-        text += f"\n🔄 <b>Members:</b> {members}"
-    if dc:
-        text += f"\n🌐 <b>DC:</b> {dc}"
-    if description:
-        text += f"\n📝 <b>Description:</b> {esc(description)}"
-
-    blocks = [
-        rich.title("💬 Chat Information"),
-        rich.para(rich.italic("Channel, group and forum details.")),
-        rich.divider(),
-    ]
-    media = rich.photos(photos, rich.bold(title), credit=f"ID {chat.id}")
-    if media is not None:
-        blocks.append(media)
-    blocks.append(rich.table(rows, striped=True, compact=True))
+        rows.append(("🌐 DC ID", str(dc)))
 
     raw_id = str(chat.id)
     if raw_id.startswith("-100"):
         inner = int(raw_id[4:])
-        blocks += [
+        detail_blocks = [
+            rich.table(rows, striped=True, compact=True),
             rich.divider(),
-            rich.heading("🧮 ID Number", 3),
-            rich.para(["A supergroup/channel ID is always ", rich.code("-100"),
-                       " plus the real ID."]),
+            rich.para(["Supergroup/channel IDs are ", rich.code("-100"),
+                       " plus the real ID:"]),
             rich.math(f"{raw_id} = -(10^{{12}} + {inner})"),
             rich.para(["Real ID without prefix: ", rich.code(inner), "."]),
         ]
+    else:
+        detail_blocks = [rich.table(rows, striped=True, compact=True)]
+    blocks.append(rich.details("📄 Full details", detail_blocks))
+
     if description:
-        blocks += [
-            rich.divider(),
-            rich.heading("📝 Description", 3),
-            rich.quote([rich.para(description)], credit=title),
-        ]
-    blocks.append(rich.footer("Fields Telegram does not expose are hidden."))
+        blocks += [rich.divider(), rich.heading("📝 Description", 3),
+                   rich.quote([rich.para(description)], credit=title)]
+
+    text = f"💬 <b>{esc(title)}</b>\n🆔 <code>{chat.id}</code>"
+    for label, value in rows[1:]:
+        text += f"\n<b>{label}:</b> {esc(value if isinstance(value, str) else rich.plain(value))}"
+    if description:
+        text += f"\n📝 <b>Description:</b> {esc(description)}"
 
     return blocks, text
 
@@ -271,7 +273,7 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
 
     blocks, text, photo = await user_card(client, user)
     if badge is not None:
-        blocks.insert(1, rich.para(badge))
+        blocks.insert(0, rich.para([rich.bold(badge)]))
         text = f"{rich.plain(badge)}\n\n{text}"
     blocks.append(user_buttons(user))
     sent = await rich.reply(client, message, blocks=blocks, fallback=text,
