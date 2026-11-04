@@ -6,6 +6,7 @@ from pyrogram.types import Message
 from cekid import bot, rich, store
 from cekid.keyboards import REQ_BOT, REQ_PREMIUM, REQ_USER
 from cekid.utils import full_name, reply_user_card
+from cekid.safety import safe
 
 CEK_HELP = (
     "🔎 <b>How to use /cek</b>\n\n"
@@ -16,6 +17,7 @@ CEK_HELP = (
 )
 
 @Client.on_message(filters.users_shared)
+@safe
 async def on_user_shared(_, message: Message):
     """From the 👤 User / ⭐️ Premium / 🤖 Bot buttons."""
     store.save_user(message.from_user)
@@ -81,6 +83,7 @@ async def on_user_shared(_, message: Message):
     return await reply_user_card(bot, message, user, badge=badge)
 
 @Client.on_message(filters.command("cek"))
+@safe
 async def cek_cmd(_, message: Message):
     store.save_user(message.from_user)
     target = None

@@ -8,12 +8,14 @@ from pyrogram.errors import FloodWait
 from pyrogram.types import Message
 
 from cekid import bot, config, rich, store
+from cekid.safety import safe
 
 log = logging.getLogger("cekid.admin")
 
 ADMIN = filters.user(config.ADMIN_IDS) if config.ADMIN_IDS else filters.user([])
 
 @Client.on_message(filters.command("stats") & ADMIN)
+@safe
 async def stats(_, message: Message):
     total = store.count()
     rows = [("👥 Total users", str(total)), ("🗄 Database", config.DB_PATH)]
@@ -26,6 +28,7 @@ async def stats(_, message: Message):
     )
 
 @Client.on_message(filters.command("broadcast") & ADMIN)
+@safe
 async def broadcast(_, message: Message):
     src = message.reply_to_message
     parts = (message.text or "").split(None, 1)

@@ -6,6 +6,7 @@ from pyrogram.types import CallbackQuery, Message
 from cekid import bot, rich, store
 from cekid.keyboards import main_menu
 from cekid.utils import reply_chat_card, reply_user_card
+from cekid.safety import safe
 
 HELP = (
     "🤖 <b>CekID Bot</b>\n\n"
@@ -17,11 +18,13 @@ HELP = (
 )
 
 @Client.on_message(filters.private, group=-1)
+@safe
 async def record_user(_, message: Message):
     """Store every user that interacts with the bot (used by /broadcast)."""
     store.save_user(message.from_user)
 
 @Client.on_message(filters.command("start") & filters.private)
+@safe
 async def start(_, message: Message):
     return await reply_user_card(
         bot, message, message.from_user,
@@ -30,6 +33,7 @@ async def start(_, message: Message):
     )
 
 @Client.on_message(filters.command("help"))
+@safe
 async def help_cmd(_, message: Message):
     return await rich.reply(
         bot, message,
@@ -64,11 +68,13 @@ async def help_cmd(_, message: Message):
     )
 
 @Client.on_message(filters.command("start") & ~filters.private)
+@safe
 async def start_chat(_, message: Message):
     """ /start in a group/channel -> card for that chat. """
     return await reply_chat_card(bot, message, message.chat)
 
 @Client.on_callback_query(filters.regex("^close$"))
+@safe
 async def close(_, cq: CallbackQuery):
     try:
         return await cq.message.delete()

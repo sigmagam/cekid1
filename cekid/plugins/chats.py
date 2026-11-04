@@ -5,8 +5,10 @@ from pyrogram.types import Message
 
 from cekid import bot, rich, store
 from cekid.utils import reply_chat_card, resolve_chat
+from cekid.safety import safe
 
 @Client.on_message(filters.chat_shared)
+@safe
 async def on_chat_shared(_, message: Message):
     """From 👥 Group / 📢 Channel / 💬 Forum / 🗂 My Group / 📚 My Channel."""
     store.save_user(message.from_user)
@@ -16,6 +18,7 @@ async def on_chat_shared(_, message: Message):
     return await reply_chat_card(bot, message, shared.chat)
 
 @Client.on_message(filters.command("id"))
+@safe
 async def chat_id(_, message: Message):
     if len(message.command) > 1:
         chat = await resolve_chat(bot, message.command[1])
