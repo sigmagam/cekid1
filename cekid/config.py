@@ -22,6 +22,13 @@ ADMIN_IDS = _ids("ADMIN_IDS", os.getenv("ADMIN_ID", "728397761"))
 # Wajib join sebelum bisa pakai bot (kosongkan untuk mematikan).
 FSUB_REQUIRED = _ids("FSUB_REQUIRED", "-1002695864434")
 
+# Link manual per chat id (dipakai kalau bot tidak bisa resolve id-nya).
+FSUB_LINKS = os.getenv(
+    "FSUB_LINKS",
+    "-1002695864434=https://t.me/AllBotAccel,"
+    "-1002642740878=https://t.me/AgentxRouter",
+)
+
 # Opsional: cuma ditampilkan tombolnya, tidak memblokir.
 FSUB_OPTIONAL = _ids("FSUB_OPTIONAL", "-1002642740878")
 

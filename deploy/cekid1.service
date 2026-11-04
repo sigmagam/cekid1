@@ -1,0 +1,17 @@
+[Unit]
+Description=CekID Telegram bot (cekid1)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/cekid1
+ExecStart=/root/cekid1/venv/bin/python3 /root/cekid1/main.py
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=0
+StandardOutput=append:/root/cekid1/cekid.log
+StandardError=append:/root/cekid1/cekid.log
+
+[Install]
+WantedBy=multi-user.target

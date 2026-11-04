@@ -27,16 +27,29 @@ async def info(client, chat_id: int) -> dict:
     if chat_id in _INFO:
         return _INFO[chat_id]
     title, url, username = None, _ENV_LINKS.get(chat_id), None
-    try:
-        chat = await client.get_chat(chat_id)
+    # Username dari link manual (t.me/xxx) bisa dipakai kalau id tidak resolve.
+    if url and "t.me/" in url:
+        tail = url.rstrip("/").split("t.me/")[-1].lstrip("@")
+        if tail and "/" not in tail:
+            username = tail
+
+    chat = None
+    targets = [chat_id] + ([f"@{username}"] if username else [])
+    for target in targets:
+        try:
+            chat = await client.get_chat(target)
+        except Exception as err:
+            log.warning("Cannot read chat %s: %s", target, err)
+            continue
+        break
+
+    if chat is not None:
         title = getattr(chat, "title", None) or getattr(chat, "first_name", None)
-        username = getattr(chat, "username", None)
-        if url is None and username:
+        username = getattr(chat, "username", None) or username
+        if username and (url is None or "t.me/" not in (url or "")):
             url = f"https://t.me/{username}"
         if url is None:
             url = getattr(chat, "invite_link", None)
-    except Exception as err:
-        log.warning("Cannot read chat %s: %s", chat_id, err)
     if url is None:
         try:
             url = await client.export_chat_invite_link(chat_id)

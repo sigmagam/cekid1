@@ -9,3 +9,4 @@ venv/
 *.log
 *.db.backup
 .cekid.lock
+.bot.lock
