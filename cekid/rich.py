@@ -13,12 +13,14 @@ from pyrogram.errors import MessageNotModified
 from pyrogram.types import (CopyTextButton, DisabledButton, InputMediaPhoto,
                             InputRichBlockBlockQuotation,
                             InputRichBlockButtons, InputRichBlockDetails,
+                            InputRichBlockExpandableBlockQuotation,
                             InputRichBlockDivider, InputRichBlockFooter,
                             InputRichBlockList, InputRichBlockListItem,
                             InputRichBlockMathematicalExpression,
                             InputRichBlockParagraph, InputRichBlockPhoto,
                             InputRichBlockSlideshow,
                             InputRichBlockPreformatted,
+                            InputRichBlockPullQuotation,
                             InputRichBlockSectionHeading, InputRichBlockTable,
                             InputRichMessage, LinkPreviewOptions,
                             ReplyParameters, RichBlockTableCell,
@@ -132,6 +134,13 @@ def quote(blocks, credit=None) -> InputRichBlockBlockQuotation:
     if not isinstance(blocks, (list, tuple)):
         blocks = [blocks]
     return InputRichBlockBlockQuotation(list(blocks), credit=credit)
+
+def pull_quote(text, credit=None) -> InputRichBlockPullQuotation:
+    return InputRichBlockPullQuotation(text, credit=credit)
+
+def expandable(text, credit=None) -> InputRichBlockExpandableBlockQuotation:
+    """Kutipan yang bisa dibuka/tutup."""
+    return InputRichBlockExpandableBlockQuotation(text, credit=credit)
 
 def pre(text, language: str | None = None) -> InputRichBlockPreformatted:
     return InputRichBlockPreformatted(text, language=language)
