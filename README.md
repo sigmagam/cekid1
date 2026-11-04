@@ -103,3 +103,10 @@ python main.py
   [action bar](https://core.telegram.org/api/action-bar).
 - **Permanent Link** memakai `https://t.me/<username>` bila ada, kalau tidak `tg://user?id=<id>`
   supaya nama tetap bisa diklik.
+
+## Force subscribe
+
+`FSUB_REQUIRED` (id chat, pisah koma) = wajib join, bot harus admin di sana.
+`FSUB_OPTIONAL` = cuma tombol, tidak memblokir.
+`FSUB_LINKS` = override link manual kalau invite link tidak bisa dibuat.
+Tombol `Try again` ada di pesan gate; admin (ADMIN_IDS) dikecualikan.

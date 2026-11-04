@@ -18,7 +18,7 @@ HELP = (
 )
 
 @Client.on_message(filters.private, group=-1)
-@safe
+@safe(gate=False)
 async def record_user(_, message: Message):
     """Store every user that interacts with the bot (used by /broadcast)."""
     store.save_user(message.from_user)

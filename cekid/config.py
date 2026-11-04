@@ -19,6 +19,12 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 # Admins: receive reports and the database backup.
 ADMIN_IDS = _ids("ADMIN_IDS", os.getenv("ADMIN_ID", "728397761"))
 
+# Wajib join sebelum bisa pakai bot (kosongkan untuk mematikan).
+FSUB_REQUIRED = _ids("FSUB_REQUIRED", "-1002695864434")
+
+# Opsional: cuma ditampilkan tombolnya, tidak memblokir.
+FSUB_OPTIONAL = _ids("FSUB_OPTIONAL", "-1002642740878")
+
 DB_PATH = os.getenv("DB_PATH", "cekid.db")
 
 # Rich messages: set 0 if rich rendering looks odd on your client.
