@@ -20,10 +20,18 @@ async def on_user_shared(_, message: Message):
     """Dari tombol 👤 User / ⭐️ Premium / 🤖 Bot."""
     store.save_user(message.from_user)
     shared = message.users_shared
+    if not shared or not shared.users:
+        return await rich.reply(bot, message, fallback="❌ Tidak ada user yang dipilih.")
+    peer = shared.users[0]
+    # Peer dari picker kadang cuma punya ID (tanpa access_hash) -> get_users gagal.
+    # Pakai objek dari service message dulu, get_users cuma buat melengkapi.
+    user = peer
     try:
-        user = await bot.get_users(shared.users[0].id)
+        fetched = await bot.get_users(peer.id)
+        if fetched is not None:
+            user = fetched
     except Exception:
-        return await rich.reply(bot, message, fallback="❌ User tidak bisa dibaca.")
+        user = peer
 
     # Tombol 👤 User = user biasa. Kalau client tetap kasih bot, jangan tampil kartu bot.
     if shared.button_id in (REQ_USER, REQ_PREMIUM) and user.is_bot:

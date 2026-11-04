@@ -247,7 +247,7 @@ async def reply(client, message, *, blocks=None, media=None, html: str | None = 
     private = str(getattr(message.chat, "type", "")).endswith("PRIVATE")
     eff = effect if effect is not None else (effect_id() if (with_effect and private) else None)
 
-    if rich_available():
+    if (blocks or html or media) and rich_available():
         try:
             return await client.send_rich_message(
                 chat_id, msg, reply_markup=reply_markup,
@@ -261,7 +261,7 @@ async def reply(client, message, *, blocks=None, media=None, html: str | None = 
 async def edit(client, message, *, blocks=None, html: str | None = None,
                fallback: str | None = None, reply_markup=None):
     msg = InputRichMessage(blocks=blocks, html=html)
-    if rich_available():
+    if (blocks or html) and rich_available():
         try:
             return await message.edit(rich_message=msg, reply_markup=reply_markup)
         except MessageNotModified:

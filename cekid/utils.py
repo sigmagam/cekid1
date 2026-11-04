@@ -22,6 +22,8 @@ def perm_link(user) -> str:
 
 
 def yesno(value) -> str:
+    if value is None:
+        return UNKNOWN  # data peer dari picker kadang tidak lengkap
     return "Yes" if value else "No"
 
 
