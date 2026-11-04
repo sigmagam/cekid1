@@ -1,8 +1,11 @@
 """Card formatting (rich blocks + HTML fallback) and chat resolving."""
 
+import logging
 import os
 
 import html
+
+log = logging.getLogger("cekid.utils")
 
 NA = "N/A"
 UNKNOWN = "Unknown"
@@ -135,29 +138,34 @@ async def _profile_video(client, chat_id):
     return None
 
 
-async def video_block(client, video, caption_text=None):
-    """Unduh PP video -> blok video rich (biar tidak terpisah dari kartu)."""
+async def attach_video(client, sent, blocks, text, video):
+    """Kartu sudah terkirim; sekarang sunting biar videonya ikut (unggah belakangan)."""
     from cekid import rich
 
+    if sent is None or video is None:
+        return sent
     path = None
     try:
         path = await client.download_media(video)
         if not path:
-            return None, None
+            return sent
         block = rich.video(
-            path, caption_text=caption_text,
+            path,
             duration=int(getattr(video, "duration", 0) or 0),
             width=int(getattr(video, "width", 0) or 512),
             height=int(getattr(video, "height", 0) or 512),
         )
-        return block, path
-    except Exception:
+        return await rich.edit(client, sent, blocks=[block] + list(blocks),
+                               fallback=text)
+    except Exception as err:
+        log.warning("Gagal menempelkan video ke kartu: %s", err)
+        return sent
+    finally:
         if path:
             try:
                 os.remove(path)
             except OSError:
                 pass
-        return None, None
 
 
 async def send_profile_video(client, chat_id, video, caption=None):
@@ -367,22 +375,15 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
         blocks.insert(0, rich.para([rich.bold(badge)]))
         text = f"{rich.plain(badge)}\n\n{text}"
     blocks.append(user_buttons(user))
-    path = None
-    if video is not None:
-        block, path = await video_block(client, video)
-        if block is not None:
-            blocks.insert(0, block)
-    try:
-        sent = await rich.reply(client, message, blocks=blocks, fallback=text,
-                                reply_markup=reply_markup)
-    finally:
-        if path:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-    if sent is None and video is not None:
-        await send_profile_video(client, message.chat.id, video)
+    sent = await rich.reply(client, message, blocks=blocks, fallback=text,
+                            reply_markup=reply_markup)
+    if sent is None:
+        # Rich ditolak server -> kalau ada video, kirim sebagai pesan biasa.
+        if video is not None:
+            await send_profile_video(client, message.chat.id, video)
+    elif video is not None:
+        # Video diunggah setelah kartu tampil, lalu kartunya disunting.
+        await attach_video(client, sent, blocks, text, video)
     pid = _as_photo_id(photo)
     if sent is None and pid:
         try:
@@ -403,19 +404,10 @@ async def reply_chat_card(client, message, chat):
     blocks.append(rich.buttons([
         rich.rbtn("Copy ID", style=rich.PRIMARY, copy=str(chat.id)),
     ]))
-    path = None
-    if video is not None:
-        block, path = await video_block(client, video)
-        if block is not None:
-            blocks.insert(0, block)
-    try:
-        sent = await rich.reply(client, message, blocks=blocks, fallback=text)
-    finally:
-        if path:
-            try:
-                os.remove(path)
-            except OSError:
-                pass
-    if sent is None and video is not None:
-        await send_profile_video(client, message.chat.id, video)
+    sent = await rich.reply(client, message, blocks=blocks, fallback=text)
+    if sent is None:
+        if video is not None:
+            await send_profile_video(client, message.chat.id, video)
+    elif video is not None:
+        await attach_video(client, sent, blocks, text, video)
     return sent
