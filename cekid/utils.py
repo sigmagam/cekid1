@@ -32,6 +32,32 @@ def _photo_id(user):
     return photo.big_file_id if photo else None
 
 
+def _is_photo_id(fid) -> bool:
+    """File id harus tipe PHOTO; CHAT_PHOTO ditolak Telegram untuk blok foto."""
+    if not fid:
+        return False
+    try:
+        from pyrogram.file_id import FileId, FileType
+        return FileId.decode(fid).file_type == FileType.PHOTO
+    except Exception:
+        return False
+
+
+async def _photo_ids(client, chat_id, fallback=None, limit: int = 4) -> list[str]:
+    """Ambil beberapa foto (untuk slideshow). Gagal -> pakai foto dari objek."""
+    ids: list[str] = []
+    try:
+        async for ph in client.get_chat_photos(chat_id, limit=limit):
+            fid = getattr(ph, "big_file_id", None) or getattr(ph, "file_id", None)
+            if fid and fid not in ids:
+                ids.append(fid)
+    except Exception:
+        pass
+    if not ids and _is_photo_id(fallback):
+        ids = [fallback]
+    return [f for f in ids if _is_photo_id(f)]
+
+
 async def user_card(client, user):
     """-> (blocks, teks_html, file_id_foto)."""
     from cekid import rich
@@ -44,31 +70,30 @@ async def user_card(client, user):
     photo = _photo_id(user)
     name = full_name(user)
     dc = getattr(user, "dc_id", None)
+    photos = await _photo_ids(client, user.id, photo)
 
     rows = [
-        ("🆔 ID", [rich.code(user.id), rich.sup(" ¹")]),
-        ("👤 First Name", rich.bold(user.first_name or NA)),
-        ("👥 Last Name", rich.bold(user.last_name or NA)),
+        ("🆔 ID", rich.code(user.id)),
+        ("👤 Nama", name),
         ("🔗 Username", f"@{user.username}" if user.username else NA),
-        ("🌐 DC ID", [rich.bold(dc or UNKNOWN), rich.sub(" dc")]),
-        ("🖼 Photo", "✅ ada" if photo else "none"),
-        ("⭐️ Premium", rich.bold(yesno(user.is_premium))),
-        ("🤖 Bot", rich.bold(yesno(user.is_bot))),
-        ("🔗 Permanent Link", rich.spoiler(rich.link(name, perm_link(user)))),
+        ("⭐️ Premium", yesno(user.is_premium)),
+        ("🤖 Bot", yesno(user.is_bot)),
+        ("🌐 DC", dc or UNKNOWN),
+        ("🖼 Foto", f"{len(photos)} foto" if photos else "tidak ada"),
+        ("🔗 Link", rich.spoiler(rich.link(name, perm_link(user)))),
     ]
 
     text = (
         "👤 <b>User Information</b>\n"
         "<i>Semua detail akun Telegram yang bisa dibaca bot.</i>\n\n"
         f"🆔 <b>ID:</b> <code>{user.id}</code>\n"
-        f"👤 <b>First Name:</b> {esc(user.first_name)}\n"
-        f"👥 <b>Last Name:</b> {esc(user.last_name) if user.last_name else NA}\n"
+        f"👤 <b>Nama:</b> {esc(name)}\n"
         f"🔗 <b>Username:</b> {'@' + user.username if user.username else NA}\n"
-        f"🌐 <b>DC ID:</b> {dc or UNKNOWN}\n"
-        f"🖼 <b>Photo:</b> {'✅ ada' if photo else 'none'}\n"
         f"⭐️ <b>Premium:</b> {yesno(user.is_premium)}\n"
         f"🤖 <b>Bot:</b> {yesno(user.is_bot)}\n"
-        f"🔗 <b>Permanent Link:</b> <a href=\"{perm_link(user)}\">{esc(name)}</a>"
+        f"🌐 <b>DC:</b> {dc or UNKNOWN}\n"
+        f"🖼 <b>Foto:</b> {len(photos) if photos else 0}\n"
+        f"🔗 <b>Link:</b> <a href=\"{perm_link(user)}\">{esc(name)}</a>"
     )
 
     blocks = [
@@ -76,18 +101,18 @@ async def user_card(client, user):
         rich.para(rich.italic("Semua detail akun Telegram yang bisa dibaca bot.")),
         rich.divider(),
     ]
-    if photo:
-        blocks.append(rich.photo(photo, "Foto profil", credit=name))
-    blocks.append(rich.table(rows, striped=True))
+    media = rich.photos(photos, [rich.bold(name), f" @{user.username}" if user.username else ""],
+                        credit=f"ID {user.id}")
+    if media is not None:
+        blocks.append(media)
+    blocks.append(rich.table(rows, striped=True, compact=True))
     blocks.append(rich.divider())
     blocks.append(rich.heading("📝 Bio", 3))
     if bio:
         blocks.append(rich.quote([rich.para(bio)], credit=name))
     else:
         blocks.append(rich.para(rich.italic("Tidak ada bio.")))
-    blocks.append(rich.footer([
-        rich.sup("1"), " ID negatif = channel/group · link permanen dispoiler (tap untuk buka).",
-    ]))
+    blocks.append(rich.footer("Tap teks buram untuk membuka link profil."))
 
     return blocks, text, photo
 
@@ -108,20 +133,19 @@ async def chat_card(client, chat):
     is_forum = getattr(chat, "is_forum", None)
     ctype = str(getattr(chat, "type", NA)).replace("ChatType.", "")
     dc = getattr(chat, "dc_id", None)
-    photo_id = None
     chat_photo = getattr(chat, "photo", None)
-    if chat_photo is not None:
-        photo_id = getattr(chat_photo, "big_file_id", None)
+    fallback_photo = getattr(chat_photo, "big_file_id", None) if chat_photo else None
+    photos = await _photo_ids(client, chat.id, fallback_photo, limit=4)
 
     rows = [
-        ("🆔 ID", [rich.code(chat.id), rich.sup(" ¹")]),
-        ("👤 Title", rich.bold(title)),
+        ("🆔 ID", rich.code(chat.id)),
+        ("👤 Title", title),
         ("🔗 Username", username),
-        ("💬 Type", rich.bold(ctype)),
-        ("🧵 Forum", rich.bold(yesno(is_forum)) if is_forum is not None else NA),
-        ("🔄 Members", [rich.bold(members if members is not None else NA),
-                        rich.sub(" orang")]),
-        ("🌐 DC ID", [rich.bold(dc or UNKNOWN), rich.sub(" dc")]),
+        ("💬 Type", ctype),
+        ("🧵 Forum", yesno(is_forum) if is_forum is not None else NA),
+        ("🔄 Members", [rich.code(members), rich.sub(" orang")]
+         if members is not None else NA),
+        ("🌐 DC", dc or UNKNOWN),
     ]
     text = (
         "💬 <b>Chat Information</b>\n"
@@ -132,7 +156,7 @@ async def chat_card(client, chat):
         f"💬 <b>Type:</b> {ctype}\n"
         f"🧵 <b>Forum:</b> {yesno(is_forum) if is_forum is not None else NA}\n"
         f"🔄 <b>Members:</b> {members if members is not None else NA}\n"
-        f"🌐 <b>DC ID:</b> {dc or UNKNOWN}"
+        f"🌐 <b>DC:</b> {dc or UNKNOWN}"
     )
 
     blocks = [
@@ -140,9 +164,10 @@ async def chat_card(client, chat):
         rich.para(rich.italic("Detail channel / group / forum.")),
         rich.divider(),
     ]
-    if photo_id:
-        blocks.append(rich.photo(photo_id, "Foto chat", credit=title))
-    blocks.append(rich.table(rows, striped=True))
+    media = rich.photos(photos, rich.bold(title), credit=f"ID {chat.id}")
+    if media is not None:
+        blocks.append(media)
+    blocks.append(rich.table(rows, striped=True, compact=True))
     blocks.append(rich.divider())
     blocks.append(rich.heading("📝 Description", 3))
     if description:
@@ -150,9 +175,7 @@ async def chat_card(client, chat):
         text += f"\n📝 <b>Description:</b> {esc(description)}"
     else:
         blocks.append(rich.para(rich.italic("Tidak ada deskripsi.")))
-    blocks.append(rich.footer([
-        rich.sup("1"), " ID -100… = channel/group · tanpa awalan = user.",
-    ]))
+    blocks.append(rich.footer("Member & foto hanya tampil kalau bot boleh membaca."))
 
     return blocks, text
 
@@ -201,7 +224,7 @@ async def reply_user_card(client, message, user, badge: str | None = None,
     blocks.append(user_buttons(user))
     sent = await rich.reply(client, message, blocks=blocks, fallback=text,
                             reply_markup=reply_markup)
-    if sent is None and photo:
+    if sent is None and _is_photo_id(photo):
         # Rich message ditolak server -> kirim foto + caption HTML.
         try:
             private = str(getattr(message.chat, "type", "")).endswith("PRIVATE")

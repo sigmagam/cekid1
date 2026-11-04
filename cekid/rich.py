@@ -17,6 +17,7 @@ from pyrogram.types import (CopyTextButton, DisabledButton, InputMediaPhoto,
                             InputRichBlockList, InputRichBlockListItem,
                             InputRichBlockMathematicalExpression,
                             InputRichBlockParagraph, InputRichBlockPhoto,
+                            InputRichBlockSlideshow,
                             InputRichBlockPreformatted,
                             InputRichBlockSectionHeading, InputRichBlockTable,
                             InputRichMessage, LinkPreviewOptions,
@@ -131,6 +132,25 @@ def photo(file_id: str, caption_text=None, credit=None,
     return InputRichBlockPhoto(
         InputMediaPhoto(file_id, has_spoiler=has_spoiler or None), cap
     )
+
+def slideshow(blocks, caption_text=None, credit=None) -> InputRichBlockSlideshow:
+    """Karusel foto (richblockslideshow)."""
+    if not isinstance(blocks, (list, tuple)):
+        blocks = [blocks]
+    cap = caption(caption_text, credit=credit) if caption_text else None
+    return InputRichBlockSlideshow(list(blocks), cap)
+
+def photos(file_ids, caption_text=None, credit=None) -> InputRichBlockSlideshow:
+    """Beberapa foto -> slideshow; satu foto -> blok foto biasa."""
+    ids = [f for f in file_ids if f]
+    if not ids:
+        return None
+    blocks = [photo(f) for f in ids]
+    if len(blocks) == 1:
+        return InputRichBlockPhoto(blocks[0].photo,
+                                   caption(caption_text, credit=credit)
+                                   if caption_text else None)
+    return slideshow(blocks, caption_text, credit)
 
 def divider() -> InputRichBlockDivider:
     return InputRichBlockDivider()
