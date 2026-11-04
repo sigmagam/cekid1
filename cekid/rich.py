@@ -11,6 +11,7 @@ import random
 from pyrogram import enums
 from pyrogram.errors import MessageNotModified
 from pyrogram.types import (CopyTextButton, DisabledButton, InputMediaPhoto,
+                            InputMediaVideo,
                             InputRichBlockBlockQuotation,
                             InputRichBlockButtons, InputRichBlockDetails,
                             InputRichBlockExpandableBlockQuotation,
@@ -22,6 +23,7 @@ from pyrogram.types import (CopyTextButton, DisabledButton, InputMediaPhoto,
                             InputRichBlockPreformatted,
                             InputRichBlockPullQuotation,
                             InputRichBlockSectionHeading, InputRichBlockTable,
+                            InputRichBlockVideo,
                             InputRichMessage, LinkPreviewOptions,
                             ReplyParameters, RichBlockTableCell,
                             RichBlockCaption, RichMessageButton, RichText,
@@ -177,6 +179,16 @@ def photos(file_ids, caption_text=None, credit=None) -> InputRichBlockSlideshow:
                                    caption(caption_text, credit=credit)
                                    if caption_text else None)
     return slideshow(blocks, caption_text, credit)
+
+def video(file_id, caption_text=None, credit=None, has_spoiler: bool = False,
+          duration: int | None = None, width: int | None = None,
+          height: int | None = None, supports_streaming: bool = True) -> InputRichBlockVideo:
+    """Blok video di dalam rich message (richblockvideo)."""
+    cap = caption(caption_text, credit=credit) if caption_text else None
+    media = InputMediaVideo(file_id, duration=duration, width=width,
+                            height=height, supports_streaming=supports_streaming,
+                            has_spoiler=has_spoiler or None)
+    return InputRichBlockVideo(media, cap)
 
 def divider() -> InputRichBlockDivider:
     return InputRichBlockDivider()

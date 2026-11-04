@@ -135,6 +135,31 @@ async def _profile_video(client, chat_id):
     return None
 
 
+async def video_block(client, video, caption_text=None):
+    """Unduh PP video -> blok video rich (biar tidak terpisah dari kartu)."""
+    from cekid import rich
+
+    path = None
+    try:
+        path = await client.download_media(video)
+        if not path:
+            return None, None
+        block = rich.video(
+            path, caption_text=caption_text,
+            duration=int(getattr(video, "duration", 0) or 0),
+            width=int(getattr(video, "width", 0) or 512),
+            height=int(getattr(video, "height", 0) or 512),
+        )
+        return block, path
+    except Exception:
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+        return None, None
+
+
 async def send_profile_video(client, chat_id, video, caption=None):
     """Kirim foto profil video sebagai video/animation (gif)."""
     from pyrogram.file_id import FileType
@@ -212,9 +237,10 @@ async def user_card(client, user):
     rows.append(("LINK", rich.spoiler(rich.link(name, perm_link(user)))))
 
     blocks = []
-    media = rich.photos(photos)
-    if media is not None:
-        blocks.append(media)
+    if video is None:
+        media = rich.photos(photos)
+        if media is not None:
+            blocks.append(media)
     blocks.append(rich.table(rows, header=True, bordered=True,
                              striped=False, compact=True))
     if bio:
@@ -274,9 +300,10 @@ async def chat_card(client, chat):
         rows.append(("PHOTOS", str(len(photos))))
 
     blocks = []
-    media = rich.photos(photos)
-    if media is not None:
-        blocks.append(media)
+    if video is None:
+        media = rich.photos(photos)
+        if media is not None:
+            blocks.append(media)
     blocks.append(rich.table(rows, header=True, bordered=True,
                              striped=False, compact=True))
 
@@ -340,9 +367,21 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
         blocks.insert(0, rich.para([rich.bold(badge)]))
         text = f"{rich.plain(badge)}\n\n{text}"
     blocks.append(user_buttons(user))
-    sent = await rich.reply(client, message, blocks=blocks, fallback=text,
-                            reply_markup=reply_markup)
+    path = None
     if video is not None:
+        block, path = await video_block(client, video, caption_text="Profile video")
+        if block is not None:
+            blocks.insert(0, block)
+    try:
+        sent = await rich.reply(client, message, blocks=blocks, fallback=text,
+                                reply_markup=reply_markup)
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    if sent is None and video is not None:
         await send_profile_video(client, message.chat.id, video,
                                  caption="Profile video")
     pid = _as_photo_id(photo)
@@ -365,8 +404,20 @@ async def reply_chat_card(client, message, chat):
     blocks.append(rich.buttons([
         rich.rbtn("Copy ID", style=rich.PRIMARY, copy=str(chat.id)),
     ]))
-    sent = await rich.reply(client, message, blocks=blocks, fallback=text)
+    path = None
     if video is not None:
+        block, path = await video_block(client, video, caption_text="Profile video")
+        if block is not None:
+            blocks.insert(0, block)
+    try:
+        sent = await rich.reply(client, message, blocks=blocks, fallback=text)
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    if sent is None and video is not None:
         await send_profile_video(client, message.chat.id, video,
                                  caption="Profile video")
     return sent
