@@ -10,21 +10,22 @@ import random
 
 from pyrogram import enums
 from pyrogram.errors import MessageNotModified
-from pyrogram.types import (CopyTextButton, DisabledButton,
+from pyrogram.types import (CopyTextButton, DisabledButton, InputMediaPhoto,
                             InputRichBlockBlockQuotation,
                             InputRichBlockButtons, InputRichBlockDetails,
                             InputRichBlockDivider, InputRichBlockFooter,
                             InputRichBlockList, InputRichBlockListItem,
                             InputRichBlockMathematicalExpression,
-                            InputRichBlockParagraph,
+                            InputRichBlockParagraph, InputRichBlockPhoto,
                             InputRichBlockPreformatted,
                             InputRichBlockSectionHeading, InputRichBlockTable,
                             InputRichMessage, LinkPreviewOptions,
                             ReplyParameters, RichBlockTableCell,
-                            RichMessageButton, RichText, RichTextBold,
+                            RichBlockCaption, RichMessageButton, RichText,
+                            RichTextBold,
                             RichTextCode, RichTextCustomEmoji,
-                            RichTextItalic, RichTextMarked, RichTextSubscript,
-                            RichTextSuperscript, RichTextUrl)
+                            RichTextItalic, RichTextMarked, RichTextSpoiler,
+                            RichTextSubscript, RichTextSuperscript, RichTextUrl)
 
 logger = logging.getLogger("cekid.rich")
 
@@ -62,23 +63,32 @@ def effect_id() -> int | None:
 
 # ---------- teks bergaya ----------
 
+def _t(text):
+    """RichText hanya menerima str / RichText / list-nya."""
+    if isinstance(text, (str, RichText, list, tuple)):
+        return text
+    return str(text)
+
 def bold(text) -> RichTextBold:
-    return RichTextBold(text)
+    return RichTextBold(_t(text))
 
 def italic(text) -> RichTextItalic:
-    return RichTextItalic(text)
+    return RichTextItalic(_t(text))
 
 def code(text) -> RichTextCode:
-    return RichTextCode(str(text))
+    return RichTextCode(_t(text))
 
 def mark(text) -> RichTextMarked:
-    return RichTextMarked(text)
+    return RichTextMarked(_t(text))
+
+def spoiler(text) -> RichTextSpoiler:
+    return RichTextSpoiler(_t(text))
 
 def sub(text) -> RichTextSubscript:
-    return RichTextSubscript(text)
+    return RichTextSubscript(_t(text))
 
 def sup(text) -> RichTextSuperscript:
-    return RichTextSuperscript(text)
+    return RichTextSuperscript(_t(text))
 
 def link(text, url: str) -> RichTextUrl:
     """Teks yang bisa diklik."""
@@ -111,6 +121,17 @@ def pre(text, language: str | None = None) -> InputRichBlockPreformatted:
 def math(expression: str) -> InputRichBlockMathematicalExpression:
     return InputRichBlockMathematicalExpression(expression)
 
+def caption(text, credit=None) -> RichBlockCaption:
+    return RichBlockCaption(text, credit=credit)
+
+def photo(file_id: str, caption_text=None, credit=None,
+          has_spoiler: bool = False) -> InputRichBlockPhoto:
+    """Blok foto di dalam rich message (PP user / foto chat)."""
+    cap = caption(caption_text, credit=credit) if caption_text else None
+    return InputRichBlockPhoto(
+        InputMediaPhoto(file_id, has_spoiler=has_spoiler or None), cap
+    )
+
 def divider() -> InputRichBlockDivider:
     return InputRichBlockDivider()
 
@@ -139,7 +160,7 @@ def checklist(items) -> InputRichBlockList:
 def _cell(value):
     if value is None:
         return "-"
-    if isinstance(value, RichText):
+    if isinstance(value, (RichText, list, tuple)):
         return value
     return str(value)
 
@@ -158,10 +179,10 @@ def table(rows, header: bool = False, striped: bool = True,
                                is_compact=compact)
 
 def kv_table(rows, value_align: str = "left") -> InputRichBlockTable:
-    """Tabel 2 kolom label/nilai, rata kiri-kanan tanpa header."""
+    """Tabel 2 kolom label/nilai; label di-bold, tanpa header."""
     cells = [
         [
-            RichBlockTableCell(text=_cell(k), align="left"),
+            RichBlockTableCell(text=RichTextBold(k), align="left"),
             RichBlockTableCell(text=_cell(v), align=value_align),
         ]
         for k, v in rows
