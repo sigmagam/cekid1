@@ -78,15 +78,47 @@ async def _photo_ids(client, chat_id, fallback=None, limit: int = 4) -> list[str
     return ids
 
 
+def _about(info):
+    """Bio user / deskripsi chat / about bot."""
+    for attr in ("bio", "description", "about"):
+        value = getattr(info, attr, None)
+        if value:
+            return value
+    return None
+
+
+async def _enrich(client, obj):
+    """Ambil data terbaru dari server (id dulu, lalu @username)."""
+    targets = []
+    if getattr(obj, "id", None) is not None:
+        targets.append(obj.id)
+    if getattr(obj, "username", None):
+        targets.append(f"@{obj.username}")
+    for target in targets:
+        try:
+            got = await client.get_chat(target)
+        except Exception:
+            continue
+        if got is not None:
+            return got
+    return None
+
+
 async def user_card(client, user):
     """-> (blocks, html_text, photo_file_id). Plain bordered table (variant 10)."""
     from cekid import rich
 
-    bio = None
-    try:
-        bio = (await client.get_chat(user.id)).bio
-    except Exception:
-        bio = None
+    info = await _enrich(client, user)
+    bio = _about(info) if info is not None else None
+    if info is not None:
+        for attr in ("dc_id", "photo", "is_premium", "is_bot", "first_name",
+                     "last_name", "username"):
+            mine, theirs = getattr(user, attr, None), getattr(info, attr, None)
+            if mine is None and theirs is not None:
+                try:
+                    setattr(user, attr, theirs)
+                except Exception:
+                    pass
 
     raw_photo = _photo_id(user)
     name = full_name(user)
@@ -135,26 +167,31 @@ async def chat_card(client, chat):
     """-> (blocks, html_text). Plain bordered table (variant 10)."""
     from cekid import rich
 
+    chat_id = chat.id
+    info = await _enrich(client, chat)
+    if info is not None:
+        chat = info
     members = getattr(chat, "members_count", None)
     if members is None:
         try:
-            members = await client.get_chat_members_count(chat.id)
+            members = await client.get_chat_members_count(chat_id)
         except Exception:
             members = None
-    description = getattr(chat, "description", None) or None
+    description = _about(chat)
     title = getattr(chat, "title", None) or full_name(chat)
     is_forum = getattr(chat, "is_forum", None)
     ctype = str(getattr(chat, "type", "")).replace("ChatType.", "") or None
     dc = getattr(chat, "dc_id", None)
     chat_photo = getattr(chat, "photo", None)
     fallback_photo = getattr(chat_photo, "big_file_id", None) if chat_photo else None
-    photos = await _photo_ids(client, chat.id, fallback_photo, limit=4)
+    photos = await _photo_ids(client, chat_id, fallback_photo, limit=4)
 
-    rows = [("ID", rich.code(chat.id))]
+    rows = [("ID", rich.code(chat_id))]
     if title:
         rows.append(("TITLE", title))
-    if getattr(chat, "username", None):
-        rows.append(("USERNAME", f"@{chat.username}"))
+    username = getattr(chat, "username", None)
+    if username:
+        rows.append(("USERNAME", f"@{username}"))
     if ctype:
         rows.append(("TYPE", ctype.upper()))
     if is_forum is not None:
@@ -173,7 +210,7 @@ async def chat_card(client, chat):
     blocks.append(rich.table(rows, header=True, bordered=True,
                              striped=False, compact=True))
 
-    raw_id = str(chat.id)
+    raw_id = str(chat_id)
     if raw_id.startswith("-100"):
         inner = int(raw_id[4:])
         blocks += [rich.divider(),
