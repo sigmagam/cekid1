@@ -26,12 +26,13 @@ async def info(client, chat_id: int) -> dict:
     """Judul + link chat (di-cache)."""
     if chat_id in _INFO:
         return _INFO[chat_id]
-    title, url = None, _ENV_LINKS.get(chat_id)
+    title, url, username = None, _ENV_LINKS.get(chat_id), None
     try:
         chat = await client.get_chat(chat_id)
         title = getattr(chat, "title", None) or getattr(chat, "first_name", None)
-        if url is None and getattr(chat, "username", None):
-            url = f"https://t.me/{chat.username}"
+        username = getattr(chat, "username", None)
+        if url is None and username:
+            url = f"https://t.me/{username}"
         if url is None:
             url = getattr(chat, "invite_link", None)
     except Exception as err:
@@ -41,7 +42,8 @@ async def info(client, chat_id: int) -> dict:
             url = await client.export_chat_invite_link(chat_id)
         except Exception as err:
             log.warning("Cannot export invite link for %s: %s", chat_id, err)
-    _INFO[chat_id] = {"title": title or str(chat_id), "url": url}
+    _INFO[chat_id] = {"title": title or str(chat_id), "url": url,
+                      "username": username}
     return _INFO[chat_id]
 
 
@@ -80,11 +82,15 @@ async def blocks(client, missing_ids: list[int]):
     for chat_id, required in chats:
         meta = _INFO.get(chat_id) or {}
         title = meta.get("title") or str(chat_id)
-        lines.append([rich.bold("Wajib: " if required else "Opsional: "), title])
+        username = meta.get("username")
+        url = meta.get("url")
+        label = title + (f" (@{username})" if username else "")
+        shown = (rich.link(label, url) if url else label)
+        lines.append([rich.bold("Wajib: " if required else "Opsional: "), shown])
         prefix = "❗️ " if (required and chat_id in missing_ids) else ("📢 " if required else "💬 ")
-        buttons.append(rich.rbtn(prefix + title,
+        buttons.append(rich.rbtn(prefix + label,
                                  style=rich.PRIMARY if required else rich.DEFAULT,
-                                 url=meta.get("url") or "https://t.me"))
+                                 url=url or "https://t.me"))
     buttons.append(rich.rbtn("🔄 Try again", style=rich.SUCCESS,
                              callback_data="fsub:check"))
 
