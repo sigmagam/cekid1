@@ -38,7 +38,7 @@ async def broadcast(_, message: Message):
             blocks=[
                 rich.heading("📣 Broadcast", 3),
                 rich.para("Balas sebuah pesan, atau tulis:"),
-                rich.para("<code>/broadcast teks pesan</code>"),
+                rich.para([rich.code("/broadcast teks pesan")]),
             ],
             fallback=("📣 <b>Broadcast</b>\n\nBalas sebuah pesan, atau tulis:\n"
                       "<code>/broadcast teks pesan</code>"),
@@ -53,7 +53,8 @@ async def broadcast(_, message: Message):
     status = await rich.reply(
         bot, message,
         blocks=[rich.heading("📣 Broadcast", 3),
-                rich.para(f"Mengirim ke <b>{len(users)}</b> user...")],
+                rich.para(["Mengirim ke ", rich.bold(str(len(users))),
+                           " user..."])],
         fallback=f"📣 Mengirim ke <b>{len(users)}</b> user...",
     )
     ok = fail = 0

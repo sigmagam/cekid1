@@ -25,7 +25,7 @@ async def record_user(_, message: Message):
 async def start(_, message: Message):
     return await reply_user_card(
         bot, message, message.from_user,
-        badge="👋 <b>Halo!</b> Ini info akunmu.",
+        badge=["👋 ", rich.bold("Halo!"), " Ini info akunmu."],
         reply_markup=main_menu(),
     )
 
@@ -39,20 +39,21 @@ async def help_cmd(_, message: Message):
             rich.divider(),
             rich.heading("Cara pakai", 3),
             rich.bullets([
-                "<b>👤 User</b> — pilih user mana saja (bukan bot)",
-                "<b>⭐️ Premium</b> — user premium saja",
-                "<b>🤖 Bot</b> — user bertipe bot saja",
-                "<b>💬 Forum</b> — group bertopik (forum)",
-                "<b>👥 Group</b> — group biasa",
-                "<b>📢 Channel</b> — channel",
-                "<b>🗂 My Group</b> / <b>📚 My Channel</b> — chat buatanmu sendiri",
+                [rich.bold("👤 User"), " — pilih user mana saja (bukan bot)"],
+                [rich.bold("⭐️ Premium"), " — user premium saja"],
+                [rich.bold("🤖 Bot"), " — user bertipe bot saja"],
+                [rich.bold("💬 Forum"), " — group bertopik (forum)"],
+                [rich.bold("👥 Group"), " — group biasa"],
+                [rich.bold("📢 Channel"), " — channel"],
+                [rich.bold("🗂 My Group"), " / ", rich.bold("📚 My Channel"),
+                 " — chat buatanmu sendiri"],
             ]),
             rich.heading("Perintah", 3),
             rich.bullets([
-                "<code>/start</code> — info akunmu",
-                "<code>/cek &lt;id|@username&gt;</code> — cek user",
-                "<code>/id</code> — ID chat ini",
-                "<code>/help</code> — bantuan ini",
+                [rich.code("/start"), " — info akunmu"],
+                [rich.code("/cek <id|@username>"), " — cek user"],
+                [rich.code("/id"), " — ID chat ini"],
+                [rich.code("/help"), " — bantuan ini"],
             ]),
             rich.footer("Semua tombol sekali tekan, langsung buka picker Telegram."),
             rich.buttons([

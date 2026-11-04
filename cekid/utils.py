@@ -168,6 +168,17 @@ async def chat_card(client, chat):
     if media is not None:
         blocks.append(media)
     blocks.append(rich.table(rows, striped=True, compact=True))
+    raw_id = str(chat.id)
+    if raw_id.startswith("-100"):
+        inner = int(raw_id[4:])
+        blocks += [
+            rich.divider(),
+            rich.heading("🧮 Angka ID", 3),
+            rich.para(["ID supergroup/channel selalu berbentuk ",
+                       rich.code("-100") , " + ID asli."]),
+            rich.math(f"{raw_id} = -(10^{{12}} + {inner})"),
+            rich.para(["ID asli tanpa awalan: ", rich.code(inner), "."]),
+        ]
     blocks.append(rich.divider())
     blocks.append(rich.heading("📝 Description", 3))
     if description:
@@ -220,7 +231,7 @@ async def reply_user_card(client, message, user, badge: str | None = None,
     blocks, text, photo = await user_card(client, user)
     if badge:
         blocks.insert(1, rich.para(badge))
-        text = f"{badge}\n\n{text}"
+        text = f"{rich.plain(badge)}\n\n{text}"
     blocks.append(user_buttons(user))
     sent = await rich.reply(client, message, blocks=blocks, fallback=text,
                             reply_markup=reply_markup)

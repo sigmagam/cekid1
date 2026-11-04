@@ -56,10 +56,12 @@ async def on_user_shared(_, message: Message):
 
     badge = None
     if shared.button_id == REQ_PREMIUM:
-        badge = ("⭐️ <b>User premium</b>" if user.is_premium
-                 else "⭐️ <b>Bukan user premium</b>")
+        badge = ("⭐️ User premium" if user.is_premium
+                 else "⭐️ Bukan user premium")
     elif shared.button_id == REQ_BOT:
-        badge = "🤖 <b>Bot</b>"
+        badge = "🤖 Bot"
+    if badge:
+        badge = [rich.bold(badge)]
     return await reply_user_card(bot, message, user, badge=badge)
 
 @Client.on_message(filters.command("cek"))
@@ -81,9 +83,9 @@ async def cek_cmd(_, message: Message):
                 rich.title("🔎 Cara pakai /cek"),
                 rich.divider(),
                 rich.bullets([
-                    "<code>/cek 123456789</code>",
-                    "<code>/cek @username</code>",
-                    "balas pesan user lalu ketik <code>/cek</code>",
+                    rich.code("/cek 123456789"),
+                    rich.code("/cek @username"),
+                    ["balas pesan user lalu ketik ", rich.code("/cek")],
                     "atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium",
                 ]),
             ],

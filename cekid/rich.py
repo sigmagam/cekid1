@@ -64,6 +64,23 @@ def effect_id() -> int | None:
 
 # ---------- teks bergaya ----------
 
+def plain(value) -> str:
+    """Ambil teks polos dari RichText (buat caption/fallback HTML)."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (list, tuple)):
+        return "".join(plain(v) for v in value)
+    alt = getattr(value, "alternative_text", None)
+    if alt is not None:
+        return plain(alt)
+    inner = getattr(value, "text", None)
+    if inner is not None:
+        return plain(inner)
+    return ""
+
+
 def _t(text):
     """RichText hanya menerima str / RichText / list-nya."""
     if isinstance(text, (str, RichText, list, tuple)):
