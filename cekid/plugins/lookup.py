@@ -33,6 +33,15 @@ async def on_user_shared(_, message: Message):
     except Exception:
         user = peer
 
+    # Still empty? Try the username Telegram passed along.
+    if getattr(user, "is_premium", None) is None and getattr(peer, "username", None):
+        try:
+            fetched = await bot.get_users(f"@{peer.username}")
+            if fetched is not None:
+                user = fetched
+        except Exception:
+            pass
+
     # 👤 User means regular users only. If the client still sends a bot,
     # never render a bot card for that button.
     if shared.button_id in (REQ_USER, REQ_PREMIUM) and user.is_bot:
@@ -59,8 +68,12 @@ async def on_user_shared(_, message: Message):
 
     badge = None
     if shared.button_id == REQ_PREMIUM:
-        badge = ("⭐️ Premium user" if user.is_premium
-                 else "⭐️ Not a premium user")
+        if user.is_premium is True:
+            badge = "⭐️ Premium user"
+        elif user.is_premium is False:
+            badge = "⭐️ Not a premium user"
+        else:
+            badge = "⭐️ Premium status: Telegram did not send it"
     elif shared.button_id == REQ_BOT:
         badge = "🤖 Bot account"
     if badge:
