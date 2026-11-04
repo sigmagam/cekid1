@@ -1,4 +1,4 @@
-"""Task latar: backup database tiap jam 00:00 WIB ke admin."""
+"""Background task: database backup every day at 00:00 WIB to the admins."""
 
 import asyncio
 import logging
@@ -14,7 +14,7 @@ WIB = timezone(timedelta(hours=7), "WIB")
 
 
 def snapshot(path: str) -> str | None:
-    """Salinan konsisten DB (via sqlite backup API) — aman walau bot sedang jalan."""
+    """Consistent DB copy via the sqlite backup API (safe while the bot runs)."""
     if not os.path.exists(path):
         return None
     tmp = f"{path}.backup"
@@ -32,15 +32,15 @@ def snapshot(path: str) -> str | None:
 async def send_backup(client) -> None:
     path = await asyncio.to_thread(snapshot, config.DB_PATH)
     if not path:
-        log.warning("Backup dilewati: %s tidak ada.", config.DB_PATH)
+        log.warning("Backup skipped: %s does not exist.", config.DB_PATH)
         return
-    caption = f"🗄 <b>Backup database</b>\n{datetime.now(WIB):%Y-%m-%d %H:%M} WIB"
+    caption = f"🗄 <b>Database backup</b>\n{datetime.now(WIB):%Y-%m-%d %H:%M} WIB"
     try:
         for admin in config.ADMIN_IDS:
             try:
                 await client.send_document(admin, path, caption=caption)
             except Exception as err:
-                log.warning("Gagal kirim backup ke %s: %s", admin, err)
+                log.warning("Failed to send backup to %s: %s", admin, err)
     finally:
         try:
             os.remove(path)
@@ -55,15 +55,15 @@ def _seconds_to_midnight() -> float:
 
 
 async def backup_loop(client) -> None:
-    """Kirim backup tepat jam 00:00 WIB, lalu ulangi tiap hari."""
+    """Deliver the backup at 00:00 WIB, then repeat daily."""
     while True:
         wait = _seconds_to_midnight()
-        log.info("Backup DB berikutnya dalam %.0f detik (00:00 WIB).", wait)
+        log.info("Next DB backup in %.0f seconds (00:00 WIB).", wait)
         try:
             await asyncio.sleep(wait)
             await send_backup(client)
         except asyncio.CancelledError:
             raise
         except Exception as err:
-            log.warning("Backup harian gagal: %s", err)
-        await asyncio.sleep(60)  # lewati batas tengah malam, jangan dobel
+            log.warning("Daily backup failed: %s", err)
+        await asyncio.sleep(60)  # skip past midnight so it never runs twice

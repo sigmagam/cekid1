@@ -1,4 +1,4 @@
-"""/start — kartu user + keyboard menu utama."""
+"""/start — user card + main menu keyboard."""
 
 from pyrogram import Client, filters
 from pyrogram.types import CallbackQuery, Message
@@ -9,23 +9,23 @@ from cekid.utils import reply_chat_card, reply_user_card
 
 HELP = (
     "🤖 <b>CekID Bot</b>\n\n"
-    "Tekan tombol di keyboard — sekali tekan langsung buka dialog pilih:\n"
+    "Tap a button on the keyboard — one tap opens the native Telegram picker:\n"
     "👤 <b>User</b> · ⭐️ <b>Premium</b> · 🤖 <b>Bot</b>\n"
     "💬 <b>Forum</b> · 👥 <b>Group</b> · 📢 <b>Channel</b>\n"
-    "🗂 <b>My Group</b> · 📚 <b>My Channel</b> (chat milikmu sendiri)\n\n"
-    "Perintah: /start · /id · /cek · /help"
+    "🗂 <b>My Group</b> · 📚 <b>My Channel</b> (chats you created)\n\n"
+    "Commands: /start · /id · /cek · /help"
 )
 
 @Client.on_message(filters.private, group=-1)
 async def record_user(_, message: Message):
-    """Catat semua user yang pernah berinteraksi (untuk broadcast)."""
+    """Store every user that interacts with the bot (used by /broadcast)."""
     store.save_user(message.from_user)
 
 @Client.on_message(filters.command("start") & filters.private)
 async def start(_, message: Message):
     return await reply_user_card(
         bot, message, message.from_user,
-        badge=["👋 ", rich.bold("Halo!"), " Ini info akunmu."],
+        badge=["👋 ", rich.bold("Hello!"), " Here is your account info."],
         reply_markup=main_menu(),
     )
 
@@ -35,29 +35,29 @@ async def help_cmd(_, message: Message):
         bot, message,
         blocks=[
             rich.title("🤖 CekID Bot"),
-            rich.para(rich.italic("Cek ID user, bot, group, channel, dan forum.")),
+            rich.para(rich.italic("Look up IDs for users, bots, groups, channels and forums.")),
             rich.divider(),
-            rich.heading("Cara pakai", 3),
+            rich.heading("How to use", 3),
             rich.bullets([
-                [rich.bold("👤 User"), " — pilih user mana saja (bukan bot)"],
-                [rich.bold("⭐️ Premium"), " — user premium saja"],
-                [rich.bold("🤖 Bot"), " — user bertipe bot saja"],
-                [rich.bold("💬 Forum"), " — group bertopik (forum)"],
-                [rich.bold("👥 Group"), " — group biasa"],
-                [rich.bold("📢 Channel"), " — channel"],
+                [rich.bold("👤 User"), " — any regular user (never a bot)"],
+                [rich.bold("⭐️ Premium"), " — premium users only"],
+                [rich.bold("🤖 Bot"), " — bot accounts only"],
+                [rich.bold("💬 Forum"), " — groups with topics enabled"],
+                [rich.bold("👥 Group"), " — regular groups"],
+                [rich.bold("📢 Channel"), " — channels"],
                 [rich.bold("🗂 My Group"), " / ", rich.bold("📚 My Channel"),
-                 " — chat buatanmu sendiri"],
+                 " — chats you created yourself"],
             ]),
-            rich.heading("Perintah", 3),
+            rich.heading("Commands", 3),
             rich.bullets([
-                [rich.code("/start"), " — info akunmu"],
-                [rich.code("/cek <id|@username>"), " — cek user"],
-                [rich.code("/id"), " — ID chat ini"],
-                [rich.code("/help"), " — bantuan ini"],
+                [rich.code("/start"), " — your own account info"],
+                [rich.code("/cek <id|@username>"), " — look up a user"],
+                [rich.code("/id"), " — ID of the current chat"],
+                [rich.code("/help"), " — this message"],
             ]),
-            rich.footer("Semua tombol sekali tekan, langsung buka picker Telegram."),
+            rich.footer("Fields Telegram does not expose are hidden from cards."),
             rich.buttons([
-                rich.rbtn("❌ Tutup", style=rich.DANGER, callback_data="close"),
+                rich.rbtn("❌ Close", style=rich.DANGER, callback_data="close"),
             ]),
         ],
         fallback=HELP,
@@ -65,7 +65,7 @@ async def help_cmd(_, message: Message):
 
 @Client.on_message(filters.command("start") & ~filters.private)
 async def start_chat(_, message: Message):
-    """ /start di group/channel -> kartu info chat itu. """
+    """ /start in a group/channel -> card for that chat. """
     return await reply_chat_card(bot, message, message.chat)
 
 @Client.on_callback_query(filters.regex("^close$"))
@@ -73,4 +73,4 @@ async def close(_, cq: CallbackQuery):
     try:
         return await cq.message.delete()
     except Exception:
-        return await cq.answer("Tidak bisa ditutup.", show_alert=True)
+        return await cq.answer("Cannot close this message.", show_alert=True)

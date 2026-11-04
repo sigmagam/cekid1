@@ -1,4 +1,4 @@
-"""Entry point bot CekID."""
+"""CekID bot entry point."""
 
 from cekid import bot
 

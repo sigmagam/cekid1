@@ -1,4 +1,4 @@
-"""Command admin: /broadcast ke semua user, /stats."""
+"""Admin commands: /broadcast to every user, /stats."""
 
 import asyncio
 import logging
@@ -13,19 +13,17 @@ log = logging.getLogger("cekid.admin")
 
 ADMIN = filters.user(config.ADMIN_IDS) if config.ADMIN_IDS else filters.user([])
 
-
 @Client.on_message(filters.command("stats") & ADMIN)
 async def stats(_, message: Message):
-    rows = [("👥 Total user", str(store.count())),
-            ("🗄 Database", config.DB_PATH)]
+    total = store.count()
+    rows = [("👥 Total users", str(total)), ("🗄 Database", config.DB_PATH)]
     return await rich.reply(
         bot, message,
-        blocks=[rich.heading("📊 Statistik", 3), rich.table(rows, striped=True)],
-        fallback=(f"📊 <b>Statistik</b>\n\n👥 <b>Total user:</b> "
-                  f"<code>{store.count()}</code>\n🗄 <b>Database:</b> "
-                  f"<code>{config.DB_PATH}</code>"),
+        blocks=[rich.title("📊 Statistics"), rich.divider(),
+                rich.table(rows, striped=True, compact=True)],
+        fallback=(f"📊 <b>Statistics</b>\n\n👥 <b>Total users:</b> <code>{total}</code>\n"
+                  f"🗄 <b>Database:</b> <code>{config.DB_PATH}</code>"),
     )
-
 
 @Client.on_message(filters.command("broadcast") & ADMIN)
 async def broadcast(_, message: Message):
@@ -37,25 +35,24 @@ async def broadcast(_, message: Message):
             bot, message,
             blocks=[
                 rich.heading("📣 Broadcast", 3),
-                rich.para("Balas sebuah pesan, atau tulis:"),
-                rich.para([rich.code("/broadcast teks pesan")]),
+                rich.para("Reply to a message, or send:"),
+                rich.para([rich.code("/broadcast your message here")]),
             ],
-            fallback=("📣 <b>Broadcast</b>\n\nBalas sebuah pesan, atau tulis:\n"
-                      "<code>/broadcast teks pesan</code>"),
+            fallback=("📣 <b>Broadcast</b>\n\nReply to a message, or send:\n"
+                      "<code>/broadcast your message here</code>"),
         )
     if src and (getattr(src, "empty", False) or getattr(src, "service", False)):
-        return await rich.reply(bot, message, fallback="❌ Pesan itu kosong / tidak bisa dikirim.")
+        return await rich.reply(bot, message, fallback="❌ That message is empty and cannot be sent.")
 
     users = store.user_ids()
     if not users:
-        return await rich.reply(bot, message, fallback="Belum ada user yang /start.")
+        return await rich.reply(bot, message, fallback="No user has started the bot yet.")
 
     status = await rich.reply(
         bot, message,
         blocks=[rich.heading("📣 Broadcast", 3),
-                rich.para(["Mengirim ke ", rich.bold(str(len(users))),
-                           " user..."])],
-        fallback=f"📣 Mengirim ke <b>{len(users)}</b> user...",
+                rich.para(["Sending to ", rich.bold(str(len(users))), " users..."])],
+        fallback=f"📣 Sending to <b>{len(users)}</b> users...",
     )
     ok = fail = 0
     for uid in users:
@@ -77,14 +74,14 @@ async def broadcast(_, message: Message):
                 fail += 1
         except Exception as err:
             fail += 1
-            log.debug("Broadcast ke %s gagal: %s", uid, err)
+            log.debug("Broadcast to %s failed: %s", uid, err)
         await asyncio.sleep(0.05)
 
     return await rich.edit(
         bot, status,
-        blocks=[rich.heading("✅ Broadcast selesai", 3),
-                rich.table([("Berhasil", str(ok)), ("Gagal", str(fail))],
-                           striped=True)],
-        fallback=(f"✅ <b>Selesai</b>\n\nBerhasil: <code>{ok}</code>\n"
-                  f"Gagal: <code>{fail}</code>"),
+        blocks=[rich.heading("✅ Broadcast finished", 3),
+                rich.table([("Delivered", str(ok)), ("Failed", str(fail))],
+                           striped=True, compact=True)],
+        fallback=(f"✅ <b>Done</b>\n\nDelivered: <code>{ok}</code>\n"
+                  f"Failed: <code>{fail}</code>"),
     )

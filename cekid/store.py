@@ -1,4 +1,4 @@
-"""Penyimpanan user yang pernah /start (SQLite, bukan JSON)."""
+"""Storage for every user that started the bot (SQLite)."""
 
 import sqlite3
 import time

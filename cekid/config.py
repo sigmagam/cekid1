@@ -1,4 +1,4 @@
-"""Konfigurasi dari environment (.env)."""
+"""Configuration from the environment (.env)."""
 
 import os
 
@@ -16,18 +16,18 @@ API_ID = int(os.getenv("API_ID", "0"))
 API_HASH = os.getenv("API_HASH", "")
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 
-# Admin: terima laporan & backup database.
+# Admins: receive reports and the database backup.
 ADMIN_IDS = _ids("ADMIN_IDS", os.getenv("ADMIN_ID", "728397761"))
 
 DB_PATH = os.getenv("DB_PATH", "cekid.db")
 
-# Rich message: set 0 kalau tampilan rich di Telegram kamu aneh.
+# Rich messages: set 0 if rich rendering looks odd on your client.
 RICH_MESSAGE = os.getenv("RICH_MESSAGE", "1").strip().lower() not in ("0", "false", "off", "no")
 
-# Efek animasi pesan (private chat). Isi 0 untuk mematikan.
+# Message effects (private chats). Set 0 to disable.
 EFFECTS_ENABLED = os.getenv("EFFECTS", "1").strip().lower() not in ("0", "false", "off", "no")
 
 if not (API_ID and API_HASH and BOT_TOKEN):
     raise SystemExit(
-        "API_ID / API_HASH / BOT_TOKEN belum diisi. Copy .env.example ke .env dulu."
+        "API_ID / API_HASH / BOT_TOKEN are missing. Copy .env.example to .env first."
     )

@@ -1,7 +1,7 @@
-"""Rich message helper (Telegram rich message) + efek animasi pesan.
+"""Rich message helpers (Telegram rich messages) + message effects.
 
-Semua kiriman teks bot lewat sini. Kalau server/DC menolak rich message,
-otomatis jatuh ke HTML biasa — bot tidak pernah mati karena fitur baru.
+Every text the bot sends goes through here. If the server/DC rejects rich
+messages we silently fall back to plain HTML, so the bot never breaks.
 """
 
 import logging
@@ -36,7 +36,7 @@ DANGER = enums.ButtonStyle.DANGER
 DEFAULT = enums.ButtonStyle.DEFAULT
 LINK = enums.ButtonStyle.LINK
 
-# ID efek animasi pesan Telegram (private chat). Bebas dipakai dari mana saja.
+# Telegram message effect IDs (private chats only).
 EFFECTS = [
     5104841245755180586,  # 🔥
     5107584321108051014,  # 👍
@@ -57,7 +57,7 @@ def _note_fail() -> None:
     global _FAILS
     _FAILS += 1
     if _FAILS == _MAX_FAILS:
-        logger.warning("Rich message tidak didukung server -> pakai HTML biasa.")
+        logger.warning("Rich messages rejected by the server -> falling back to HTML.")
 
 def effect_id() -> int | None:
     return random.choice(EFFECTS) if (_EFFECTS and EFFECTS) else None
@@ -65,7 +65,7 @@ def effect_id() -> int | None:
 # ---------- teks bergaya ----------
 
 def plain(value) -> str:
-    """Ambil teks polos dari RichText (buat caption/fallback HTML)."""
+    """Extract plain text from RichText (captions / HTML fallback)."""
     if value is None:
         return ""
     if isinstance(value, str):
@@ -82,7 +82,7 @@ def plain(value) -> str:
 
 
 def _t(text):
-    """RichText hanya menerima str / RichText / list-nya."""
+    """RichText only accepts str / RichText / list of them."""
     if isinstance(text, (str, RichText, list, tuple)):
         return text
     return str(text)
@@ -109,7 +109,7 @@ def sup(text) -> RichTextSuperscript:
     return RichTextSuperscript(_t(text))
 
 def link(text, url: str) -> RichTextUrl:
-    """Teks yang bisa diklik."""
+    """Clickable text."""
     return RichTextUrl(text, url)
 
 html_link = link
@@ -144,21 +144,21 @@ def caption(text, credit=None) -> RichBlockCaption:
 
 def photo(file_id: str, caption_text=None, credit=None,
           has_spoiler: bool = False) -> InputRichBlockPhoto:
-    """Blok foto di dalam rich message (PP user / foto chat)."""
+    """Photo block inside a rich message."""
     cap = caption(caption_text, credit=credit) if caption_text else None
     return InputRichBlockPhoto(
         InputMediaPhoto(file_id, has_spoiler=has_spoiler or None), cap
     )
 
 def slideshow(blocks, caption_text=None, credit=None) -> InputRichBlockSlideshow:
-    """Karusel foto (richblockslideshow)."""
+    """Photo carousel (richblockslideshow)."""
     if not isinstance(blocks, (list, tuple)):
         blocks = [blocks]
     cap = caption(caption_text, credit=credit) if caption_text else None
     return InputRichBlockSlideshow(list(blocks), cap)
 
 def photos(file_ids, caption_text=None, credit=None) -> InputRichBlockSlideshow:
-    """Beberapa foto -> slideshow; satu foto -> blok foto biasa."""
+    """Multiple photos -> slideshow; a single photo -> plain photo block."""
     ids = [f for f in file_ids if f]
     if not ids:
         return None
@@ -216,7 +216,7 @@ def table(rows, header: bool = False, striped: bool = True,
                                is_compact=compact)
 
 def kv_table(rows, value_align: str = "left") -> InputRichBlockTable:
-    """Tabel 2 kolom label/nilai; label di-bold, tanpa header."""
+    """Two column label/value table, bold labels, no header row."""
     cells = [
         [
             RichBlockTableCell(text=RichTextBold(k), align="left"),
@@ -271,13 +271,13 @@ async def _send_plain(client, chat_id, text, reply_markup, effect, **kwargs):
             )
         except Exception as err:
             if eff is None:
-                logger.warning("Gagal kirim pesan: %s", err)
+                logger.warning("Failed to send message: %s", err)
     return None
 
 async def reply(client, message, *, blocks=None, media=None, html: str | None = None,
                 fallback: str | None = None, reply_markup=None,
                 effect: int | None = None, with_effect: bool = True, **kwargs):
-    """Balas pesan dengan rich message; fallback otomatis ke HTML."""
+    """Reply with a rich message, falling back to HTML automatically."""
     msg = InputRichMessage(blocks=blocks, html=html, media=media)
     text = _text_of(msg, fallback)
     chat_id = message.chat.id
@@ -292,7 +292,7 @@ async def reply(client, message, *, blocks=None, media=None, html: str | None = 
             )
         except Exception as err:
             _note_fail()
-            logger.warning("Rich message gagal (%s) -> fallback HTML.", err)
+            logger.warning("Rich message failed (%s) -> falling back to HTML.", err)
     return await _send_plain(client, chat_id, text, reply_markup, eff, **kwargs)
 
 async def edit(client, message, *, blocks=None, html: str | None = None,
@@ -305,7 +305,7 @@ async def edit(client, message, *, blocks=None, html: str | None = None,
             return message
         except Exception as err:
             _note_fail()
-            logger.warning("Rich edit gagal (%s) -> fallback HTML.", err)
+            logger.warning("Rich edit failed (%s) -> falling back to HTML.", err)
     try:
         return await message.edit_text(
             _text_of(msg, fallback), reply_markup=reply_markup,

@@ -1,4 +1,4 @@
-"""Lookup user / premium / bot (tombol request → kartu rich langsung)."""
+"""Lookup user / premium / bot (request buttons -> rich card instantly)."""
 
 from pyrogram import Client, filters
 from pyrogram.types import Message
@@ -8,23 +8,23 @@ from cekid.keyboards import REQ_BOT, REQ_PREMIUM, REQ_USER
 from cekid.utils import full_name, reply_user_card
 
 CEK_HELP = (
-    "🔎 <b>Cara pakai /cek</b>\n\n"
+    "🔎 <b>How to use /cek</b>\n\n"
     "• <code>/cek 123456789</code>\n"
     "• <code>/cek @username</code>\n"
-    "• balas pesan user lalu ketik <code>/cek</code>\n"
-    "• atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium di menu."
+    "• reply to a user message and type <code>/cek</code>\n"
+    "• or tap 👤 User / 🤖 Bot / ⭐️ Premium on the menu."
 )
 
 @Client.on_message(filters.users_shared)
 async def on_user_shared(_, message: Message):
-    """Dari tombol 👤 User / ⭐️ Premium / 🤖 Bot."""
+    """From the 👤 User / ⭐️ Premium / 🤖 Bot buttons."""
     store.save_user(message.from_user)
     shared = message.users_shared
     if not shared or not shared.users:
-        return await rich.reply(bot, message, fallback="❌ Tidak ada user yang dipilih.")
+        return await rich.reply(bot, message, fallback="❌ No user was selected.")
     peer = shared.users[0]
-    # Peer dari picker kadang cuma punya ID (tanpa access_hash) -> get_users gagal.
-    # Pakai objek dari service message dulu, get_users cuma buat melengkapi.
+    # A peer from the picker may only carry an ID (no access_hash), so
+    # get_users() is only used to enrich the data we already have.
     user = peer
     try:
         fetched = await bot.get_users(peer.id)
@@ -33,33 +33,36 @@ async def on_user_shared(_, message: Message):
     except Exception:
         user = peer
 
-    # Tombol 👤 User = user biasa. Kalau client tetap kasih bot, jangan tampil kartu bot.
+    # 👤 User means regular users only. If the client still sends a bot,
+    # never render a bot card for that button.
     if shared.button_id in (REQ_USER, REQ_PREMIUM) and user.is_bot:
         return await rich.reply(
             bot, message,
             blocks=[
-                rich.heading("⚠️ Itu bot, bukan user", 3),
-                rich.para(f"{full_name(user)} adalah bot. Pakai tombol 🤖 Bot."),
+                rich.heading("⚠️ That is a bot", 3),
+                rich.para([f"{full_name(user)} is a bot. Use the ",
+                           rich.bold("🤖 Bot"), " button instead."]),
             ],
-            fallback=f"⚠️ {full_name(user)} adalah bot. Pakai tombol 🤖 Bot.",
+            fallback=f"⚠️ {full_name(user)} is a bot. Use the 🤖 Bot button.",
         )
 
     if shared.button_id == REQ_BOT and not user.is_bot:
         return await rich.reply(
             bot, message,
             blocks=[
-                rich.heading("⚠️ Itu bukan bot", 3),
-                rich.para(f"{full_name(user)} bukan bot. Pakai tombol 👤 User."),
+                rich.heading("⚠️ That is not a bot", 3),
+                rich.para([f"{full_name(user)} is not a bot. Use the ",
+                           rich.bold("👤 User"), " button instead."]),
             ],
-            fallback=f"⚠️ {full_name(user)} bukan bot. Pakai tombol 👤 User.",
+            fallback=f"⚠️ {full_name(user)} is not a bot. Use the 👤 User button.",
         )
 
     badge = None
     if shared.button_id == REQ_PREMIUM:
-        badge = ("⭐️ User premium" if user.is_premium
-                 else "⭐️ Bukan user premium")
+        badge = ("⭐️ Premium user" if user.is_premium
+                 else "⭐️ Not a premium user")
     elif shared.button_id == REQ_BOT:
-        badge = "🤖 Bot"
+        badge = "🤖 Bot account"
     if badge:
         badge = [rich.bold(badge)]
     return await reply_user_card(bot, message, user, badge=badge)
@@ -80,13 +83,13 @@ async def cek_cmd(_, message: Message):
         return await rich.reply(
             bot, message,
             blocks=[
-                rich.title("🔎 Cara pakai /cek"),
+                rich.title("🔎 How to use /cek"),
                 rich.divider(),
                 rich.bullets([
                     rich.code("/cek 123456789"),
                     rich.code("/cek @username"),
-                    ["balas pesan user lalu ketik ", rich.code("/cek")],
-                    "atau tekan tombol 👤 User / 🤖 Bot / ⭐️ Premium",
+                    ["reply to a user message and type ", rich.code("/cek")],
+                    "or tap 👤 User / 🤖 Bot / ⭐️ Premium on the menu",
                 ]),
             ],
             fallback=CEK_HELP,

@@ -1,4 +1,4 @@
-"""CekID — bot cek ID user/chat Telegram (kurigram / pyrogram fork)."""
+"""CekID — Telegram user/chat ID lookup bot (kurigram / pyrogram fork)."""
 
 import asyncio
 import logging
@@ -22,12 +22,12 @@ log = logging.getLogger("cekid")
 store = Store(config.DB_PATH)
 
 COMMANDS = [
-    BotCommand("start", "Mulai / tampilkan info kamu"),
-    BotCommand("cek", "Cek ID user (balas pesan / @username / id)"),
-    BotCommand("id", "Lihat ID chat ini"),
-    BotCommand("help", "Bantuan"),
-    BotCommand("broadcast", "Siaran ke semua user (admin)"),
-    BotCommand("stats", "Jumlah user (admin)"),
+    BotCommand("start", "Your own account info"),
+    BotCommand("cek", "Look up a user (reply / @username / id)"),
+    BotCommand("id", "Show the ID of this chat"),
+    BotCommand("help", "Help"),
+    BotCommand("broadcast", "Send to all users (admin)"),
+    BotCommand("stats", "User count (admin)"),
 ]
 
 
@@ -47,14 +47,14 @@ class CekIdBot(Client):
         # Backup database tiap 00:00 WIB.
         self._bg = [asyncio.create_task(backup_loop(self))]
         me = await self.get_me()
-        log.info("✅ Bot aktif sebagai @%s", me.username or me.id)
+        log.info("Ready as @%s", me.username or me.id)
         return self
 
     async def stop(self, *args, **kwargs):
         for task in getattr(self, "_bg", []):
             task.cancel()
         await super().stop(*args, **kwargs)
-        log.info("Bot berhenti.")
+        log.info("Bot stopped.")
 
 
 bot = CekIdBot()

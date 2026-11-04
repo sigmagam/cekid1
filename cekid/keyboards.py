@@ -1,8 +1,7 @@
-"""Semua keyboard bot (reply keyboard berwarna + inline).
+"""Every bot keyboard (colored reply keyboard + inline).
 
-Tombol menu = tombol *request* Telegram: sekali tekan langsung membuka
-dialog native (pilih user / channel / group / forum) — tanpa keyboard
-perantara.
+Menu buttons are Telegram *request* buttons: one tap opens the native
+picker (user / channel / group / forum) with no intermediate keyboard.
 """
 
 from pyrogram import enums
@@ -15,7 +14,7 @@ SUCCESS = enums.ButtonStyle.SUCCESS
 DANGER = enums.ButtonStyle.DANGER
 DEFAULT = enums.ButtonStyle.DEFAULT
 
-# button_id unik per fitur (dipakai saat users_shared / chat_shared masuk).
+# Unique button_id per feature (used when users_shared / chat_shared arrive).
 REQ_USER = 701
 REQ_PREMIUM = 702
 REQ_BOT = 703
@@ -62,7 +61,7 @@ def _chat_button(text: str, button_id: int, *, is_channel: bool,
 
 
 def main_menu() -> ReplyKeyboardMarkup:
-    """Sekali tekan = langsung buka dialog pilih user/chat."""
+    """One tap opens the native user/chat picker."""
     return ReplyKeyboardMarkup(
         keyboard=[
             [
@@ -79,7 +78,7 @@ def main_menu() -> ReplyKeyboardMarkup:
                 _chat_button("📢 Channel", REQ_CHANNEL, is_channel=True),
             ],
             [
-                # chat_is_created=True -> hanya chat yang user sendiri buat (dia owner).
+                # chat_is_created=True -> only chats the user created (owner).
                 _chat_button("🗂 My Group", REQ_MYGROUP, is_channel=False,
                              is_forum=None, created=True, style=SUCCESS),
                 _chat_button("📚 My Channel", REQ_MYCHANNEL, is_channel=True,
