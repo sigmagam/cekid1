@@ -1,5 +1,7 @@
 """Card formatting (rich blocks + HTML fallback) and chat resolving."""
 
+import os
+
 import html
 
 NA = "N/A"
@@ -104,6 +106,72 @@ async def _enrich(client, obj):
     return None
 
 
+def _retype(fid, file_type):
+    """Re-encode a file id with a different FileType (PHOTO -> VIDEO/ANIMATION)."""
+    if not fid:
+        return None
+    try:
+        from pyrogram.file_id import FileId
+        info = FileId.decode(fid)
+        return FileId(
+            major=info.major, minor=info.minor, file_type=file_type,
+            dc_id=info.dc_id, file_reference=info.file_reference, url=info.url,
+            media_id=info.media_id, access_hash=info.access_hash,
+        ).encode()
+    except Exception:
+        return None
+
+
+async def _profile_video(client, chat_id):
+    """Video/gif profile photo (Telegram animated avatar), kalau ada."""
+    try:
+        async for ph in client.get_chat_photos(chat_id, limit=1):
+            anim = getattr(ph, "animation", None)
+            video = getattr(anim, "animation", None) if anim else None
+            if video is not None:
+                return video
+    except Exception:
+        pass
+    return None
+
+
+async def send_profile_video(client, chat_id, video, caption=None):
+    """Kirim foto profil video sebagai video/animation (gif)."""
+    from pyrogram.file_id import FileType
+
+    fid = getattr(video, "file_id", None)
+    for kind, retype in (("animation", FileType.ANIMATION), ("video", FileType.VIDEO)):
+        fixed = _retype(fid, retype)
+        if not fixed:
+            continue
+        try:
+            if kind == "animation":
+                return await client.send_animation(chat_id, fixed, caption=caption)
+            return await client.send_video(chat_id, fixed, caption=caption,
+                                           supports_streaming=True)
+        except Exception:
+            continue
+    # Jalan terakhir: unduh lalu unggah ulang.
+    path = None
+    try:
+        path = await client.download_media(video)
+        if path:
+            try:
+                return await client.send_animation(chat_id, path, caption=caption)
+            except Exception:
+                return await client.send_video(chat_id, path, caption=caption,
+                                               supports_streaming=True)
+    except Exception:
+        return None
+    finally:
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+    return None
+
+
 async def user_card(client, user):
     """-> (blocks, html_text, photo_file_id). Plain bordered table (variant 10)."""
     from cekid import rich
@@ -124,6 +192,7 @@ async def user_card(client, user):
     name = full_name(user)
     dc = getattr(user, "dc_id", None)
     photos = await _photo_ids(client, user.id, raw_photo)
+    video = await _profile_video(client, user.id)
 
     rows = [("ID", rich.code(user.id))]
     if getattr(user, "first_name", None):
@@ -160,7 +229,7 @@ async def user_card(client, user):
         text += f"📝 <b>Bio:</b> {esc(bio)}\n"
     text += f'🔗 <a href="{perm_link(user)}">{esc(name)}</a>'
 
-    return blocks, text, raw_photo
+    return blocks, text, raw_photo, video
 
 
 async def chat_card(client, chat):
@@ -185,6 +254,7 @@ async def chat_card(client, chat):
     chat_photo = getattr(chat, "photo", None)
     fallback_photo = getattr(chat_photo, "big_file_id", None) if chat_photo else None
     photos = await _photo_ids(client, chat_id, fallback_photo, limit=4)
+    video = await _profile_video(client, chat_id)
 
     rows = [("ID", rich.code(chat_id))]
     if title:
@@ -226,7 +296,7 @@ async def chat_card(client, chat):
     if description:
         text += f"📝 <b>Description:</b> {esc(description)}"
 
-    return blocks, text
+    return blocks, text, video
 
 
 def _looks_like_id(text: str) -> bool:
@@ -265,13 +335,16 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
     """Send the user card as a rich message (profile photo included inside)."""
     from cekid import rich
 
-    blocks, text, photo = await user_card(client, user)
+    blocks, text, photo, video = await user_card(client, user)
     if badge is not None:
         blocks.insert(0, rich.para([rich.bold(badge)]))
         text = f"{rich.plain(badge)}\n\n{text}"
     blocks.append(user_buttons(user))
     sent = await rich.reply(client, message, blocks=blocks, fallback=text,
                             reply_markup=reply_markup)
+    if video is not None:
+        await send_profile_video(client, message.chat.id, video,
+                                 caption="Profile video")
     pid = _as_photo_id(photo)
     if sent is None and pid:
         try:
@@ -288,8 +361,12 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
 async def reply_chat_card(client, message, chat):
     from cekid import rich
 
-    blocks, text = await chat_card(client, chat)
+    blocks, text, video = await chat_card(client, chat)
     blocks.append(rich.buttons([
         rich.rbtn("Copy ID", style=rich.PRIMARY, copy=str(chat.id)),
     ]))
-    return await rich.reply(client, message, blocks=blocks, fallback=text)
+    sent = await rich.reply(client, message, blocks=blocks, fallback=text)
+    if video is not None:
+        await send_profile_video(client, message.chat.id, video,
+                                 caption="Profile video")
+    return sent
