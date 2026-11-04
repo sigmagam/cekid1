@@ -369,7 +369,7 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
     blocks.append(user_buttons(user))
     path = None
     if video is not None:
-        block, path = await video_block(client, video, caption_text="Profile video")
+        block, path = await video_block(client, video)
         if block is not None:
             blocks.insert(0, block)
     try:
@@ -382,8 +382,7 @@ async def reply_user_card(client, message, user, badge=None, reply_markup=None):
             except OSError:
                 pass
     if sent is None and video is not None:
-        await send_profile_video(client, message.chat.id, video,
-                                 caption="Profile video")
+        await send_profile_video(client, message.chat.id, video)
     pid = _as_photo_id(photo)
     if sent is None and pid:
         try:
@@ -406,7 +405,7 @@ async def reply_chat_card(client, message, chat):
     ]))
     path = None
     if video is not None:
-        block, path = await video_block(client, video, caption_text="Profile video")
+        block, path = await video_block(client, video)
         if block is not None:
             blocks.insert(0, block)
     try:
@@ -418,6 +417,5 @@ async def reply_chat_card(client, message, chat):
             except OSError:
                 pass
     if sent is None and video is not None:
-        await send_profile_video(client, message.chat.id, video,
-                                 caption="Profile video")
+        await send_profile_video(client, message.chat.id, video)
     return sent
